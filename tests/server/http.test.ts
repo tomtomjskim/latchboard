@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createLatchboardServer } from "../../src/server/http";
 import type { TodaySnapshot } from "../../src/shared/contracts";
 
@@ -53,12 +56,13 @@ function snapshot(): TodaySnapshot {
   };
 }
 
-async function withServer<T>(run: (url: string) => Promise<T>): Promise<T> {
+async function withServer<T>(run: (url: string) => Promise<T>, options: { staticRoot?: string } = {}): Promise<T> {
   const server = await createLatchboardServer({
     host: "127.0.0.1",
     port: 0,
     token: "test-token",
-    getSnapshot: snapshot
+    getSnapshot: snapshot,
+    staticRoot: options.staticRoot
   });
 
   try {
@@ -134,5 +138,26 @@ describe("createLatchboardServer", () => {
       expect(allowed.headers.get("content-type")).toContain("text/event-stream");
       await allowed.body?.cancel();
     });
+  });
+
+  it("serves built assets and returns not found for missing asset paths", async () => {
+    const staticRoot = mkdtempSync(join(tmpdir(), "latchboard-static-"));
+    mkdirSync(join(staticRoot, "assets"), { recursive: true });
+    writeFileSync(join(staticRoot, "assets", "app.js"), "console.log('latchboard');");
+
+    await withServer(
+      async (url) => {
+        const asset = await fetch(`${url}/assets/app.js`);
+        const missing = await fetch(`${url}/assets/missing.js`);
+        const directory = await fetch(`${url}/assets/`);
+
+        expect(asset.status).toBe(200);
+        expect(asset.headers.get("content-type")).toContain("text/javascript");
+        expect(await asset.text()).toContain("latchboard");
+        expect(missing.status).toBe(404);
+        expect(directory.status).toBe(404);
+      },
+      { staticRoot }
+    );
   });
 });

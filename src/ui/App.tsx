@@ -60,6 +60,16 @@ function reasonShortLabel(reason: AttentionReason | null): string {
   return reason ? reasonShortLabels[reason] : "OK";
 }
 
+function ReasonChip({ reason }: { reason: AttentionReason | null }) {
+  const label = reasonLabel(reason);
+
+  return (
+    <span className={`reason-chip ${reason ?? "none"}`} aria-label={label} title={label}>
+      {reasonShortLabel(reason)}
+    </span>
+  );
+}
+
 function selectedFromSnapshot(snapshot: TodaySnapshot, selectedId: string | null): WorkstreamSummary | null {
   if (selectedId) {
     const selected = snapshot.workstreams.find((workstream) => workstream.workstreamId === selectedId);
@@ -88,9 +98,7 @@ function DetailPanel({ workstream }: { workstream: WorkstreamSummary | null }) {
   return (
     <aside className="detail-panel" aria-label="Workstream detail">
       <div className="section-heading">
-        <span className={`reason-chip ${workstream.classification.attentionReason ?? "none"}`}>
-          {reasonShortLabel(workstream.classification.attentionReason)}
-        </span>
+        <ReasonChip reason={workstream.classification.attentionReason} />
         <h2>{workstream.label}</h2>
       </div>
       <dl className="detail-list">
@@ -143,6 +151,77 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
         </div>
       </header>
 
+      <div className="workspace-grid">
+        <section className="attention-panel" aria-labelledby="attention-heading">
+          <div className="section-heading">
+            <div>
+              <h1 id="attention-heading">Attention Queue</h1>
+              <p className="reason-legend">B Missing next step · D Missing validation · Blocked · Stale</p>
+            </div>
+            <span>{snapshot.attention.length} open</span>
+          </div>
+          <div className="queue-list">
+            {snapshot.attention.length === 0 ? (
+              <p className="empty-state">No attention items</p>
+            ) : (
+              snapshot.attention.map((row) => (
+                <button
+                  className={`queue-row ${selected?.workstreamId === row.workstreamId ? "is-selected" : ""}`}
+                  type="button"
+                  key={row.workstreamId}
+                  onClick={() => setSelectedId(row.workstreamId)}
+                  aria-pressed={selected?.workstreamId === row.workstreamId}
+                  aria-label={`View ${row.label} details`}
+                >
+                  <ReasonChip reason={row.classification.attentionReason} />
+                  <span className="row-title">{row.label}</span>
+                  <span>{reasonLabel(row.classification.attentionReason)}</span>
+                  <span>{formatDateTime(row.lastActivityAt)}</span>
+                  <span>{row.classification.certainty}</span>
+                  <span className="row-meta row-evidence">{row.classification.evidenceCodes.map(evidenceLabel).join(" ")}</span>
+                  <span className="row-meta row-prompt">{nextStepPromptLabel(row.classification.nextStepPromptTemplateId)}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </section>
+
+        <DetailPanel workstream={selected} />
+
+        <section className="workstream-panel" aria-labelledby="workstreams-heading">
+          <div className="section-heading">
+            <h2 id="workstreams-heading">All Workstreams</h2>
+            <span>{snapshot.workstreams.length} observed</span>
+          </div>
+          <div className="workstream-list">
+            <div className="workstream-row workstream-head" aria-hidden="true">
+              <span>Name</span>
+              <span>State</span>
+              <span>Attention</span>
+              <span>Last Activity</span>
+            </div>
+            <div className="workstream-items" role="list" aria-label="All workstreams">
+              {snapshot.workstreams.map((workstream) => (
+                <div key={workstream.workstreamId} role="listitem">
+                  <button
+                    className={`workstream-row ${selected?.workstreamId === workstream.workstreamId ? "is-selected" : ""}`}
+                    type="button"
+                    onClick={() => setSelectedId(workstream.workstreamId)}
+                    aria-pressed={selected?.workstreamId === workstream.workstreamId}
+                    aria-label={`View ${workstream.label} details`}
+                  >
+                    <span className="row-title">{workstream.label}</span>
+                    <span>{stateLabels[workstream.rawState]}</span>
+                    <span>{attentionIds.has(workstream.workstreamId) ? reasonLabel(workstream.classification.attentionReason) : "Clear"}</span>
+                    <span>{formatDateTime(workstream.lastActivityAt)}</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+
       <section className="daily-strip" aria-label="Daily summary">
         <h2>Daily Summary</h2>
         <div className="summary-grid">
@@ -164,72 +243,6 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
           </div>
         </div>
       </section>
-
-      <div className="workspace-grid">
-        <section className="attention-panel" aria-labelledby="attention-heading">
-          <div className="section-heading">
-            <h1 id="attention-heading">Attention Queue</h1>
-            <span>{snapshot.attention.length} open</span>
-          </div>
-          <div className="queue-list">
-            {snapshot.attention.length === 0 ? (
-              <p className="empty-state">No attention items</p>
-            ) : (
-              snapshot.attention.map((row) => (
-                <button
-                  className="queue-row"
-                  type="button"
-                  key={row.workstreamId}
-                  onClick={() => setSelectedId(row.workstreamId)}
-                  aria-label={`View ${row.label} details`}
-                >
-                  <span className={`reason-chip ${row.classification.attentionReason ?? "none"}`}>
-                    {reasonShortLabel(row.classification.attentionReason)}
-                  </span>
-                  <span className="row-title">{row.label}</span>
-                  <span>{reasonLabel(row.classification.attentionReason)}</span>
-                  <span>{formatDateTime(row.lastActivityAt)}</span>
-                  <span>{row.classification.certainty}</span>
-                  <span>{row.classification.evidenceCodes.map(evidenceLabel).join(" ")}</span>
-                  <span>{nextStepPromptLabel(row.classification.nextStepPromptTemplateId)}</span>
-                </button>
-              ))
-            )}
-          </div>
-        </section>
-
-        <DetailPanel workstream={selected} />
-
-        <section className="workstream-panel" aria-labelledby="workstreams-heading">
-          <div className="section-heading">
-            <h2 id="workstreams-heading">All Workstreams</h2>
-            <span>{snapshot.workstreams.length} observed</span>
-          </div>
-          <div className="workstream-table" role="table" aria-label="All workstreams">
-            <div className="table-row table-head" role="row">
-              <span role="columnheader">Name</span>
-              <span role="columnheader">State</span>
-              <span role="columnheader">Attention</span>
-              <span role="columnheader">Last Activity</span>
-            </div>
-            {snapshot.workstreams.map((workstream) => (
-              <button
-                className="table-row"
-                type="button"
-                key={workstream.workstreamId}
-                onClick={() => setSelectedId(workstream.workstreamId)}
-                role="row"
-                aria-label={`View ${workstream.label} details`}
-              >
-                <span role="cell">{workstream.label}</span>
-                <span role="cell">{stateLabels[workstream.rawState]}</span>
-                <span role="cell">{attentionIds.has(workstream.workstreamId) ? reasonLabel(workstream.classification.attentionReason) : "Clear"}</span>
-                <span role="cell">{formatDateTime(workstream.lastActivityAt)}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
     </main>
   );
 }

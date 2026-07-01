@@ -82,9 +82,11 @@ describe("AppView", () => {
     expect(screen.getByRole("heading", { name: "Attention Queue" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "All Workstreams" })).toBeTruthy();
     expect(screen.getByText("Daily Summary")).toBeTruthy();
+    expect(screen.getByText("B Missing next step · D Missing validation · Blocked · Stale")).toBeTruthy();
     expect(screen.getAllByText("Missing validation").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Run the planned validation and review the result.").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Completion was claimed without a validation signal.").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("table")).toBeNull();
 
     const body = document.body.textContent ?? "";
     expect(body).not.toContain("repo");
@@ -101,13 +103,17 @@ describe("AppView", () => {
   it("opens a sanitized detail panel for a selected workstream", () => {
     render(<AppView snapshot={snapshot} />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "View Workstream 1 details" })[0]);
+    const verifiedButton = screen.getByRole("button", { name: "View Workstream 2 details" });
+    expect(verifiedButton.getAttribute("aria-pressed")).toBe("false");
 
-    expect(screen.getByRole("heading", { name: "Workstream 1" })).toBeTruthy();
+    fireEvent.click(verifiedButton);
+
+    expect(verifiedButton.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("heading", { name: "Workstream 2" })).toBeTruthy();
     expect(screen.getAllByText("State").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("done claimed").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("verified done").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Next Step").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Run the planned validation and review the result.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("No next-step prompt is required.").length).toBeGreaterThan(0);
     expect(document.body.textContent).not.toContain("ws_attention");
   });
 });

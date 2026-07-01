@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import type { TodaySnapshot, WorkstreamSummary } from "../shared/contracts";
@@ -9,6 +9,7 @@ type LatchboardServerOptions = {
   port: number;
   token: string;
   getSnapshot: () => TodaySnapshot;
+  staticRoot?: string;
 };
 
 export type LatchboardServer = {
@@ -61,8 +62,8 @@ function rootHtml(token: string): string {
 </html>`;
 }
 
-function builtRootHtml(token: string): string | null {
-  const indexPath = resolve("dist/ui/index.html");
+function builtRootHtml(token: string, staticRoot: string): string | null {
+  const indexPath = resolve(staticRoot, "index.html");
   if (!existsSync(indexPath)) {
     return null;
   }
@@ -74,21 +75,38 @@ function builtRootHtml(token: string): string | null {
     : `${html}${bootstrapScript}`;
 }
 
-function staticAssetPath(pathname: string): string | null {
+function staticAssetPath(pathname: string, staticRoot: string): string | null {
   if (!pathname.startsWith("/assets/")) {
     return null;
   }
 
-  const distRoot = resolve("dist/ui");
+  const distRoot = resolve(staticRoot);
+  const assetsRoot = resolve(distRoot, "assets");
   const assetPath = normalize(join(distRoot, pathname));
-  if (!assetPath.startsWith(`${distRoot}${sep}`)) {
+  if (!assetPath.startsWith(`${assetsRoot}${sep}`)) {
     return null;
   }
+
+  try {
+    const assetStat = lstatSync(assetPath);
+    if (!assetStat.isFile()) {
+      return null;
+    }
+
+    const realDistRoot = realpathSync(distRoot);
+    const realAssetPath = realpathSync(assetPath);
+    if (!realAssetPath.startsWith(`${realDistRoot}${sep}`)) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
   return assetPath;
 }
 
-function serveBuiltAsset(response: ServerResponse, pathname: string): boolean {
-  const assetPath = staticAssetPath(pathname);
+function serveBuiltAsset(response: ServerResponse, pathname: string, staticRoot: string): boolean {
+  const assetPath = staticAssetPath(pathname, staticRoot);
   if (!assetPath || !existsSync(assetPath)) {
     return false;
   }
@@ -164,6 +182,7 @@ export async function createLatchboardServer(options: LatchboardServerOptions): 
   if (options.host !== "127.0.0.1") {
     throw new Error("Latchboard server must bind to 127.0.0.1");
   }
+  const staticRoot = resolve(options.staticRoot ?? "dist/ui");
 
   const server = createServer((request, response) => {
     const url = new URL(request.url ?? "/", `http://${options.host}`);
@@ -177,11 +196,16 @@ export async function createLatchboardServer(options: LatchboardServerOptions): 
       return;
     }
 
-    if (serveBuiltAsset(response, url.pathname)) {
+    if (serveBuiltAsset(response, url.pathname, staticRoot)) {
       return;
     }
 
-    const html = builtRootHtml(options.token) ?? rootHtml(options.token);
+    if (url.pathname.startsWith("/assets/")) {
+      writeText(response, 404, "Not Found");
+      return;
+    }
+
+    const html = builtRootHtml(options.token, staticRoot) ?? rootHtml(options.token);
     response.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store"
