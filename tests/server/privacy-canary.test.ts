@@ -31,8 +31,18 @@ function expectNoCanary(surface: string, body: string): void {
 }
 
 function canarySnapshot(): TodaySnapshot {
+  const rawFixture = readFileSync("fixtures/privacy-canary.jsonl", "utf8");
+  for (const canary of canaryStrings) {
+    expect(rawFixture, `fixture must contain ${canary}`).toContain(canary);
+  }
+
   const read = readJsonlSince({ path: "fixtures/privacy-canary.jsonl", offset: 0 });
+  expect(read.status.connected).toBe(true);
+  expect(read.status.parsedLineCount).toBeGreaterThan(0);
+
   const facts = normalizeRecords(read.records, "demo");
+  expect(facts.length).toBeGreaterThan(0);
+
   const workstreams = reduceWorkstreams(facts);
   const classifications = classifyWorkstreams(workstreams, {
     now: new Date("2026-07-01T10:00:00.000+09:00"),

@@ -6,7 +6,7 @@ module.exports = defineConfig({
     baseURL: "http://127.0.0.1:8787"
   },
   webServer: {
-    command: "npm run demo",
+    command: "npm run build && npm run demo",
     url: "http://127.0.0.1:8787",
     reuseExistingServer: false,
     timeout: 30_000
