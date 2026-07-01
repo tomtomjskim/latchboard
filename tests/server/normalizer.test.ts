@@ -95,4 +95,39 @@ describe("normalizeRecords", () => {
     expect(canaryFact.workstreamId).toBe(stableFact.workstreamId);
     expect(canaryFact.id).toBe(stableFact.id);
   });
+
+  it("groups records by hashed allowlisted opaque session id", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 1,
+          value: {
+            kind: "demo",
+            sessionId: "opaque-session-123",
+            scenario: "first",
+            time: "2026-07-01T09:00:00.000+09:00",
+            signals: ["session_started"]
+          }
+        },
+        {
+          lineNumber: 2,
+          value: {
+            kind: "demo",
+            sessionId: "opaque-session-123",
+            scenario: "second",
+            time: "2026-07-01T09:05:00.000+09:00",
+            signals: ["completion_claim_seen"]
+          }
+        }
+      ],
+      "demo"
+    );
+
+    expect(facts).toHaveLength(2);
+    expect(facts[0].workstreamId).toBe(facts[1].workstreamId);
+    expect(facts[0].workstreamId).toMatch(/^ws_demo_[a-f0-9]{16}$/);
+    expect(JSON.stringify(facts)).not.toContain("opaque-session-123");
+    expect(JSON.stringify(facts)).not.toContain("first");
+    expect(JSON.stringify(facts)).not.toContain("second");
+  });
 });

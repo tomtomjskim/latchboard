@@ -18,4 +18,26 @@ test("demo server responds on loopback HTTP", async ({ page, request }) => {
   await expect(page.getByText("Missing next step").first()).toBeVisible();
   await expect(page.getByText("Blocked").first()).toBeVisible();
   await expect(page.getByText("Stale").first()).toBeVisible();
+
+  const snapshot = await page.evaluate(async () => {
+    const token = window.__LATCHBOARD_BOOTSTRAP__.token;
+    const response = await fetch("/api/snapshot", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.json();
+  });
+  const attentionCounts = snapshot.attention.reduce((counts, row) => {
+    const reason = row.classification.attentionReason;
+    counts[reason] = (counts[reason] || 0) + 1;
+    return counts;
+  }, {});
+
+  expect(attentionCounts).toEqual({
+    missing_validation: 1,
+    missing_next_step: 1,
+    blocked: 1,
+    stale: 1
+  });
+  expect(snapshot.workstreams.filter((row) => row.rawState === "verified_done")).toHaveLength(1);
+  expect(snapshot.dailySummary).toEqual({ unresolved: 4, verifiedDone: 1, carryOver: 1 });
 });

@@ -1,9 +1,15 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { classifyWorkstreams } from "./classifier";
+import { readJsonlSince, type SourceCursor } from "./events-adapter";
+import { normalizeRecords } from "./normalizer";
+import { reduceWorkstreams } from "./reducer";
 import type {
   AttentionRow,
   Classification,
+  SafeFact,
   SourceStatus,
+  SourceType,
   TodaySnapshot,
   WorkstreamState,
   WorkstreamSummary
@@ -17,6 +23,25 @@ export type BuildSnapshotInput = {
   sourceStatus: SourceStatus;
   workstreams: WorkstreamState[];
   classifications: Classification[];
+};
+
+export type SnapshotRuntimeOptions = {
+  mode: "demo" | "real";
+  inputPath: string;
+  statePath: string;
+  sourceType: SourceType;
+  timezone: string;
+  staleThresholdMs: number;
+  pollIntervalMs?: number;
+  now: () => Date;
+};
+
+export type SnapshotRuntime = {
+  getSnapshot: () => TodaySnapshot;
+  pollOnce: () => Promise<TodaySnapshot>;
+  start: () => void;
+  stop: () => void;
+  subscribe: (listener: (snapshot: TodaySnapshot) => void) => () => void;
 };
 
 export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
@@ -65,4 +90,120 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
 export function writeSnapshot(path: string, snapshot: TodaySnapshot): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(snapshot, null, 2));
+}
+
+function localDateKey(date: Date, timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "00";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+function factLocalDateKey(fact: SafeFact, timezone: string): string {
+  return localDateKey(new Date(fact.occurredAt), timezone);
+}
+
+function emptySourceStatus(connected: boolean): SourceStatus {
+  return {
+    connected,
+    parsedLineCount: 0,
+    malformedLineCount: 0,
+    partialLineCount: 0
+  };
+}
+
+function mergeSourceStatus(previous: SourceStatus, next: SourceStatus): SourceStatus {
+  return {
+    connected: next.connected,
+    parsedLineCount: previous.parsedLineCount + next.parsedLineCount,
+    malformedLineCount: previous.malformedLineCount + next.malformedLineCount,
+    partialLineCount: next.partialLineCount
+  };
+}
+
+export function createSnapshotRuntime(options: SnapshotRuntimeOptions): SnapshotRuntime {
+  const pollIntervalMs = options.pollIntervalMs ?? 500;
+  let cursor: SourceCursor = { path: options.inputPath, offset: 0 };
+  let facts: SafeFact[] = [];
+  let sourceStatus = emptySourceStatus(false);
+  let snapshot = buildCurrentSnapshot();
+  let interval: NodeJS.Timeout | undefined;
+  const listeners = new Set<(snapshot: TodaySnapshot) => void>();
+
+  function buildCurrentSnapshot(): TodaySnapshot {
+    const now = options.now();
+    const date = localDateKey(now, options.timezone);
+    const todayFacts = facts.filter((fact) => factLocalDateKey(fact, options.timezone) === date);
+    const workstreams = reduceWorkstreams(todayFacts);
+    const classifications = classifyWorkstreams(workstreams, {
+      now,
+      staleThresholdMs: options.staleThresholdMs
+    });
+
+    return buildSnapshot({
+      mode: options.mode,
+      date,
+      timezone: options.timezone,
+      generatedAt: now.toISOString(),
+      sourceStatus,
+      workstreams,
+      classifications
+    });
+  }
+
+  function publish(nextSnapshot: TodaySnapshot): void {
+    for (const listener of listeners) {
+      listener(nextSnapshot);
+    }
+  }
+
+  async function pollOnce(): Promise<TodaySnapshot> {
+    const read = readJsonlSince(cursor);
+    cursor = read.cursor;
+    sourceStatus = mergeSourceStatus(sourceStatus, read.status);
+
+    if (read.records.length > 0) {
+      facts = facts.concat(normalizeRecords(read.records, options.sourceType));
+    }
+
+    const nextSnapshot = buildCurrentSnapshot();
+    const changed = JSON.stringify(nextSnapshot) !== JSON.stringify(snapshot);
+    snapshot = nextSnapshot;
+    writeSnapshot(options.statePath, snapshot);
+
+    if (changed) {
+      publish(snapshot);
+    }
+
+    return snapshot;
+  }
+
+  return {
+    getSnapshot: () => snapshot,
+    pollOnce,
+    start: () => {
+      if (interval) {
+        return;
+      }
+      interval = setInterval(() => {
+        void pollOnce();
+      }, pollIntervalMs);
+    },
+    stop: () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = undefined;
+      }
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    }
+  };
 }

@@ -1,2 +1,2 @@
-{"kind":"demo","scenario":"stale","time":"2026-07-01T06:30:00.000+09:00","signals":["session_started","idle_signal_seen"]}
+{"kind":"demo","scenario":"stale","time":"2026-07-01T06:30:00.000+09:00","signals":["session_started","idle_signal_seen","next_step_signal_seen"]}
 {"kind":"demo","scenario":"verified_done","time":"2026-06-30T23:30:00.000+09:00","signals":["session_started","completion_claim_seen","validation_signal_seen"]}

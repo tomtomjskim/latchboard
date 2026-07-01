@@ -56,6 +56,31 @@ function snapshot(): TodaySnapshot {
   };
 }
 
+function updatedSnapshot(): TodaySnapshot {
+  return {
+    ...snapshot(),
+    generatedAt: "2026-07-01T09:45:00.000Z",
+    attention: [],
+    workstreams: [
+      {
+        ...snapshot().workstreams[0],
+        rawState: "verified_done",
+        classification: {
+          workstreamId: "ws_attention",
+          attentionReason: null,
+          severity: "low",
+          certainty: "explicit",
+          evidenceCodes: ["validation_signal_present"],
+          nextStepStatus: "not_required",
+          nextStepPromptTemplateId: "no_prompt",
+          since: "2026-07-01T09:45:00.000Z"
+        }
+      }
+    ],
+    dailySummary: { unresolved: 0, verifiedDone: 1, carryOver: 0 }
+  };
+}
+
 async function withServer<T>(run: (url: string) => Promise<T>, options: { staticRoot?: string } = {}): Promise<T> {
   const server = await createLatchboardServer({
     host: "127.0.0.1",
@@ -138,6 +163,54 @@ describe("createLatchboardServer", () => {
       expect(allowed.headers.get("content-type")).toContain("text/event-stream");
       await allowed.body?.cancel();
     });
+  });
+
+  it("emits snapshot_updated events to open SSE clients", async () => {
+    let currentSnapshot = snapshot();
+    const listeners = new Set<(snapshot: TodaySnapshot) => void>();
+    const server = await createLatchboardServer({
+      host: "127.0.0.1",
+      port: 0,
+      token: "test-token",
+      getSnapshot: () => currentSnapshot,
+      subscribeToSnapshots: (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      }
+    });
+
+    try {
+      const stream = await fetch(`${server.url}/api/stream`, {
+        headers: { Authorization: "Bearer test-token" }
+      });
+      expect(stream.status).toBe(200);
+      const reader = stream.body?.getReader();
+      expect(reader).toBeDefined();
+      const decoder = new TextDecoder();
+      let body = "";
+
+      while (!body.includes("event: snapshot\n")) {
+        const next = await reader!.read();
+        expect(next.done).toBe(false);
+        body += decoder.decode(next.value, { stream: true });
+      }
+
+      currentSnapshot = updatedSnapshot();
+      for (const listener of listeners) {
+        listener(currentSnapshot);
+      }
+
+      while (!body.includes("event: snapshot_updated\n")) {
+        const next = await reader!.read();
+        expect(next.done).toBe(false);
+        body += decoder.decode(next.value, { stream: true });
+      }
+
+      expect(body).toContain('"verifiedDone":1');
+      await reader?.cancel();
+    } finally {
+      await server.close();
+    }
   });
 
   it("serves built assets and returns not found for missing asset paths", async () => {

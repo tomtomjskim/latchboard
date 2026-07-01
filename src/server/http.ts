@@ -9,6 +9,7 @@ type LatchboardServerOptions = {
   port: number;
   token: string;
   getSnapshot: () => TodaySnapshot;
+  subscribeToSnapshots?: (listener: (snapshot: TodaySnapshot) => void) => () => void;
   staticRoot?: string;
 };
 
@@ -172,6 +173,14 @@ function routeApi(
     response.write(`data: ${JSON.stringify(options.getSnapshot())}\n\n`);
     response.write(`event: heartbeat\n`);
     response.write(`data: {"ok":true}\n\n`);
+    const unsubscribe = options.subscribeToSnapshots?.((snapshot) => {
+      response.write(`event: snapshot_updated\n`);
+      response.write(`data: ${JSON.stringify(snapshot)}\n\n`);
+    });
+    request.on("close", () => {
+      unsubscribe?.();
+      response.end();
+    });
     return;
   }
 

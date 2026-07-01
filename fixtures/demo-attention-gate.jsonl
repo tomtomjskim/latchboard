@@ -1,5 +1,5 @@
 {"kind":"demo","scenario":"missing_validation","time":"2026-07-01T09:00:00.000+09:00","signals":["session_started","completion_claim_seen"]}
 {"kind":"demo","scenario":"missing_next_step","time":"2026-07-01T09:10:00.000+09:00","signals":["session_started","tool_finished"]}
 {"kind":"demo","scenario":"blocked","time":"2026-07-01T09:20:00.000+09:00","signals":["session_started","blocked_signal_seen"]}
-{"kind":"demo","scenario":"stale","time":"2026-07-01T06:00:00.000+09:00","signals":["session_started","idle_signal_seen"]}
+{"kind":"demo","scenario":"stale","time":"2026-07-01T06:00:00.000+09:00","signals":["session_started","idle_signal_seen","next_step_signal_seen"]}
 {"kind":"demo","scenario":"verified_done","time":"2026-07-01T09:30:00.000+09:00","signals":["session_started","completion_claim_seen","validation_signal_seen","next_step_signal_seen"]}
