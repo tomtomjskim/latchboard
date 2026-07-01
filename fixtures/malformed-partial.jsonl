@@ -1,0 +1,4 @@
+{"kind":"demo","scenario":"missing_validation","time":"2026-07-01T09:00:00.000+09:00","signals":["session_started","completion_claim_seen"]}
+{not-json
+{"kind":"demo","scenario":"unknown","time":"2026-07-01T09:05:00.000+09:00"}
+{"kind":"demo","scenario":"partial"
