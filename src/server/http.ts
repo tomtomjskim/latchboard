@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { existsSync, readFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
+import { extname, join, normalize, resolve, sep } from "node:path";
 import type { TodaySnapshot, WorkstreamSummary } from "../shared/contracts";
 
 type LatchboardServerOptions = {
@@ -34,6 +36,15 @@ function writeText(response: ServerResponse, statusCode: number, body: string): 
   response.end(body);
 }
 
+function contentType(path: string): string {
+  const types: Record<string, string> = {
+    ".css": "text/css; charset=utf-8",
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8"
+  };
+  return types[extname(path)] ?? "application/octet-stream";
+}
+
 function rootHtml(token: string): string {
   const bootstrap = JSON.stringify({ token });
   return `<!doctype html>
@@ -48,6 +59,46 @@ function rootHtml(token: string): string {
     <script>window.__LATCHBOARD_BOOTSTRAP__=${bootstrap};</script>
   </body>
 </html>`;
+}
+
+function builtRootHtml(token: string): string | null {
+  const indexPath = resolve("dist/ui/index.html");
+  if (!existsSync(indexPath)) {
+    return null;
+  }
+
+  const bootstrapScript = `<script>window.__LATCHBOARD_BOOTSTRAP__=${JSON.stringify({ token })};</script>`;
+  const html = readFileSync(indexPath, "utf8");
+  return html.includes("</body>")
+    ? html.replace("</body>", `${bootstrapScript}</body>`)
+    : `${html}${bootstrapScript}`;
+}
+
+function staticAssetPath(pathname: string): string | null {
+  if (!pathname.startsWith("/assets/")) {
+    return null;
+  }
+
+  const distRoot = resolve("dist/ui");
+  const assetPath = normalize(join(distRoot, pathname));
+  if (!assetPath.startsWith(`${distRoot}${sep}`)) {
+    return null;
+  }
+  return assetPath;
+}
+
+function serveBuiltAsset(response: ServerResponse, pathname: string): boolean {
+  const assetPath = staticAssetPath(pathname);
+  if (!assetPath || !existsSync(assetPath)) {
+    return false;
+  }
+
+  response.writeHead(200, {
+    "Content-Type": contentType(assetPath),
+    "Cache-Control": "no-store"
+  });
+  response.end(readFileSync(assetPath));
+  return true;
 }
 
 function workstreamById(snapshot: TodaySnapshot, id: string): WorkstreamSummary | undefined {
@@ -126,11 +177,16 @@ export async function createLatchboardServer(options: LatchboardServerOptions): 
       return;
     }
 
+    if (serveBuiltAsset(response, url.pathname)) {
+      return;
+    }
+
+    const html = builtRootHtml(options.token) ?? rootHtml(options.token);
     response.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store"
     });
-    response.end(rootHtml(options.token));
+    response.end(html);
   });
 
   await new Promise<void>((resolve, reject) => {
