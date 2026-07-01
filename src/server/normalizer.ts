@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { SafeFact, SafeFactCode, SafeSourceEventType, SourceType } from "../shared/contracts";
 import type { JsonLineRecord } from "./events-adapter";
 
@@ -17,10 +16,6 @@ const allowedCodes = new Set<SafeFactCode>([
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function safeId(input: string): string {
-  return `ws_${createHash("sha256").update(input).digest("hex").slice(0, 12)}`;
 }
 
 function sourceEventType(value: unknown): SafeSourceEventType {
@@ -49,15 +44,14 @@ function safeSignals(value: unknown): SafeFactCode[] {
 export function normalizeRecords(records: JsonLineRecord[], sourceType: SourceType): SafeFact[] {
   const facts: SafeFact[] = [];
 
-  records.forEach((record) => {
+  records.forEach((record, recordIndex) => {
     const value = isRecord(record.value) ? record.value : {};
-    const scenario = typeof value.scenario === "string" ? value.scenario : `line_${record.lineNumber}`;
-    const workstreamId = safeId(`${sourceType}:${scenario}`);
+    const workstreamId = `ws_${sourceType}_${record.lineNumber}`;
     const signals = safeSignals(value.signals);
 
     signals.forEach((code, index) => {
       facts.push({
-        id: `fact_${workstreamId}_${record.lineNumber}_${index}`,
+        id: `fact_${workstreamId}_${recordIndex}_${index}`,
         sourceType,
         occurredAt: safeTime(value.time),
         workstreamId,

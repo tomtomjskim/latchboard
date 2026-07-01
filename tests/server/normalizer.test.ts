@@ -68,4 +68,31 @@ describe("normalizeRecords", () => {
     expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
     expect(JSON.stringify(facts)).not.toContain("/Users/private/acme");
   });
+
+  it("does not derive workstream identity from raw scenario values", () => {
+    const stableRecord = {
+      lineNumber: 7,
+      value: {
+        kind: "demo",
+        scenario: "missing_validation",
+        time: "2026-07-01T09:00:00.000+09:00",
+        signals: ["session_started"]
+      }
+    };
+    const canaryRecord = {
+      lineNumber: 7,
+      value: {
+        kind: "demo",
+        scenario: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW /Users/private/acme/customer-repo",
+        time: "2026-07-01T09:00:00.000+09:00",
+        signals: ["session_started"]
+      }
+    };
+
+    const [stableFact] = normalizeRecords([stableRecord], "demo");
+    const [canaryFact] = normalizeRecords([canaryRecord], "demo");
+
+    expect(canaryFact.workstreamId).toBe(stableFact.workstreamId);
+    expect(canaryFact.id).toBe(stableFact.id);
+  });
 });
