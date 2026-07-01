@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { get } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 async function waitForDemoServer(url: string) {
   const deadline = Date.now() + 3_000;
@@ -32,6 +34,36 @@ async function requestDemoServer(url: string) {
   });
 }
 
+async function waitForDemoUrl(demo: ReturnType<typeof spawn>) {
+  let output = "";
+  const deadline = Date.now() + 5_000;
+
+  demo.stdout?.setEncoding("utf8");
+  demo.stderr?.setEncoding("utf8");
+  demo.stdout?.on("data", (chunk) => {
+    output += chunk;
+  });
+  demo.stderr?.on("data", (chunk) => {
+    output += chunk;
+  });
+
+  while (Date.now() < deadline) {
+    const url = output.match(/Latchboard running at (http:\/\/127\.0\.0\.1:\d+)/)?.[1];
+    const token = output.match(/API token: ([A-Za-z0-9_-]+)/)?.[1];
+    if (url && token) {
+      return { url, token };
+    }
+
+    if (demo.exitCode !== null) {
+      throw new Error(`demo process exited before serving:\n${output}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(`demo server did not print URL/token:\n${output}`);
+}
+
 describe("project scaffold", () => {
   it("defines required npm scripts", () => {
     const pkg = JSON.parse(readFileSync("package.json", "utf8"));
@@ -43,16 +75,14 @@ describe("project scaffold", () => {
   });
 
   it("keeps the demo command serving loopback HTTP", async () => {
-    const demo = spawn("npm", ["run", "demo"], {
-      env: {
-        ...process.env,
-        LATCHBOARD_PORT: "18787"
-      },
-      stdio: "ignore"
+    const dir = mkdtempSync(join(tmpdir(), "latchboard-scaffold-"));
+    const demo = spawn("npm", ["run", "demo", "--", "--port", "0", "--state", join(dir, "state.json")], {
+      stdio: ["ignore", "pipe", "pipe"]
     });
 
     try {
-      const response = await waitForDemoServer("http://127.0.0.1:18787");
+      const { url } = await waitForDemoUrl(demo);
+      const response = await waitForDemoServer(url);
       expect(response.statusCode).toBe(200);
       expect(response.body).toContain("Latchboard");
       expect(demo.exitCode).toBeNull();

@@ -76,7 +76,14 @@ function routeApi(
   }
 
   if (pathname.startsWith("/api/workstreams/")) {
-    const id = decodeURIComponent(pathname.slice("/api/workstreams/".length));
+    let id: string;
+    try {
+      id = decodeURIComponent(pathname.slice("/api/workstreams/".length));
+    } catch {
+      writeText(response, 400, "Bad Request");
+      return;
+    }
+
     const workstream = workstreamById(options.getSnapshot(), id);
     if (!workstream) {
       writeText(response, 404, "Not Found");

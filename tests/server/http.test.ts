@@ -112,6 +112,16 @@ describe("createLatchboardServer", () => {
     });
   });
 
+  it("returns bad request for malformed encoded workstream ids", async () => {
+    await withServer(async (url) => {
+      const response = await fetch(`${url}/api/workstreams/%E0%A4%A`, {
+        headers: { Authorization: "Bearer test-token" }
+      });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
   it("requires bearer token for SSE stream", async () => {
     await withServer(async (url) => {
       const denied = await fetch(`${url}/api/stream`);

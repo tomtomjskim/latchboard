@@ -32,9 +32,15 @@ describe("parseRuntimeConfig", () => {
     expect(config.staleThresholdMs).toBe(60000);
   });
 
-  it.each(["NaN", "Infinity", "0", "-1", "3000.5", "65536"])("rejects invalid port %s", (port) => {
+  it("accepts port 0 for ephemeral test servers", () => {
+    const config = parseRuntimeConfig(["--mode", "demo", "--port", "0"], { now });
+
+    expect(config.port).toBe(0);
+  });
+
+  it.each(["NaN", "Infinity", "-1", "3000.5", "65536"])("rejects invalid port %s", (port) => {
     expect(() => parseRuntimeConfig(["--mode", "demo", "--port", port], { now })).toThrow(
-      "--port must be an integer from 1 to 65535"
+      "--port must be an integer from 0 to 65535"
     );
   });
 
@@ -42,7 +48,7 @@ describe("parseRuntimeConfig", () => {
     ["no following token", ["--mode", "demo", "--port"]],
     ["next token is another flag", ["--port", "--mode", "demo"]]
   ])("rejects missing port value when %s", (_case, argv) => {
-    expect(() => parseRuntimeConfig(argv, { now })).toThrow("--port must be an integer from 1 to 65535");
+    expect(() => parseRuntimeConfig(argv, { now })).toThrow("--port must be an integer from 0 to 65535");
   });
 
   it.each(["NaN", "Infinity", "0", "-1", "60000.5"])("rejects invalid stale-ms %s", (staleMs) => {

@@ -61,3 +61,35 @@ Manual API checks:
 
 - Task 6 intentionally builds a startup snapshot. Continuous tailing/update loops are not implemented in this task.
 - Full React dashboard rendering is deferred to Task 7.
+
+## Review Fix Evidence
+
+Reviewer findings fixed:
+
+- Allowed `--port 0` for ephemeral demo process tests.
+- Updated scaffold demo lifecycle test to parse the actual loopback URL from stdout instead of relying on a fixed env port.
+- Added malformed `/api/workstreams/:id` handling so invalid percent encoding returns `400 Bad Request`.
+
+Focused regression tests:
+
+```bash
+npm test -- tests/scaffold.test.ts tests/server/config.test.ts tests/server/http.test.ts
+```
+
+Result: passed, 3 files / 26 tests.
+
+Full unit suite:
+
+```bash
+npm test
+```
+
+Result: passed, 9 files / 51 tests.
+
+Typecheck:
+
+```bash
+npm run typecheck
+```
+
+Result: passed.

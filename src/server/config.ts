@@ -60,8 +60,8 @@ export function parseRuntimeConfig(argv: string[], deps: { now: Date } = { now: 
   const port = parseIntegerFlag(
     "--port",
     8787,
-    (value) => value >= 1 && value <= 65535,
-    "--port must be an integer from 1 to 65535"
+    (value) => value >= 0 && value <= 65535,
+    "--port must be an integer from 0 to 65535"
   );
   const staleThresholdMs = parseIntegerFlag(
     "--stale-ms",
