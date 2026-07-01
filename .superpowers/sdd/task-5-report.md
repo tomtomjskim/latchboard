@@ -31,3 +31,20 @@
 
 - Reducer and classifier do not consume raw JSONL records or freeform input fields.
 - Workstream labels are generated as generic sorted labels: `Workstream 1`, `Workstream 2`, etc.
+
+## Review Fix Evidence
+
+- RED: `npm test -- tests/server/reducer.test.ts tests/server/classifier.test.ts`
+  - Failed with 2 classifier regressions:
+    - validation before completion was incorrectly treated as clean with `validation_signal_present`.
+    - recent non-verified next-step-only work was incorrectly returned as `not_required` with `validation_signal_present`.
+- Fix:
+  - Added classifier validation-after-completion detection matching reducer semantics.
+  - Split clean classifier output so verified done keeps `validation_signal_present` / `not_required`, while recent non-verified work with a next step returns `evidenceCodes: []` / `nextStepStatus: "present"`.
+  - Added reducer same-timestamp id tie-break coverage.
+- GREEN: `npm test -- tests/server/reducer.test.ts tests/server/classifier.test.ts`
+  - Passed.
+  - 2 test files passed.
+  - 11 tests passed.
+- Typecheck: `npm run typecheck`
+  - Passed.

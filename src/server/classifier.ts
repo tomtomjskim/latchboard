@@ -36,6 +36,18 @@ function hasCode(workstream: WorkstreamState, code: WorkstreamState["facts"][num
   return workstream.facts.some((fact) => fact.code === code);
 }
 
+function hasValidationAtOrAfterCompletion(workstream: WorkstreamState): boolean {
+  const completionTimes = workstream.facts
+    .filter((fact) => fact.code === "completion_claim_seen")
+    .map((fact) => Date.parse(fact.occurredAt));
+
+  return workstream.facts.some(
+    (fact) =>
+      fact.code === "validation_signal_seen" &&
+      completionTimes.some((completionTime) => Date.parse(fact.occurredAt) >= completionTime)
+  );
+}
+
 export function classifyWorkstreams(
   workstreams: WorkstreamState[],
   options: ClassificationOptions
@@ -43,7 +55,7 @@ export function classifyWorkstreams(
   return workstreams.map((workstream) => {
     const since = workstream.lastActivityAt;
     const hasCompletionClaim = hasCode(workstream, "completion_claim_seen");
-    const hasValidationSignal = hasCode(workstream, "validation_signal_seen");
+    const hasValidationAfterCompletion = hasValidationAtOrAfterCompletion(workstream);
     const hasNextStepSignal = hasCode(workstream, "next_step_signal_seen");
     const isVerifiedDone = workstream.rawState === "verified_done";
 
@@ -60,7 +72,7 @@ export function classifyWorkstreams(
       };
     }
 
-    if (hasCompletionClaim && !hasValidationSignal) {
+    if (hasCompletionClaim && !hasValidationAfterCompletion) {
       return {
         workstreamId: workstream.id,
         attentionReason: "missing_validation",
@@ -69,6 +81,19 @@ export function classifyWorkstreams(
         evidenceCodes: ["completion_claim_without_validation"],
         nextStepStatus: "unclear",
         nextStepPromptTemplateId: "run_validation",
+        since
+      };
+    }
+
+    if (isVerifiedDone) {
+      return {
+        workstreamId: workstream.id,
+        attentionReason: null,
+        severity: "low",
+        certainty: "explicit",
+        evidenceCodes: ["validation_signal_present"],
+        nextStepStatus: "not_required",
+        nextStepPromptTemplateId: "no_prompt",
         since
       };
     }
@@ -104,8 +129,8 @@ export function classifyWorkstreams(
       attentionReason: null,
       severity: "low",
       certainty: "explicit",
-      evidenceCodes: ["validation_signal_present"],
-      nextStepStatus: "not_required",
+      evidenceCodes: [],
+      nextStepStatus: "present",
       nextStepPromptTemplateId: "no_prompt",
       since
     };

@@ -57,6 +57,43 @@ describe("classifyWorkstreams", () => {
     });
   });
 
+  it("flags validation before completion as missing validation", () => {
+    const [classification] = classifyWorkstreams(
+      [
+        workstream("ws_validation_before_completion", "done_claimed", "2026-07-01T11:30:00.000Z", [
+          fact(
+            "fact_1",
+            "ws_validation_before_completion",
+            "2026-07-01T11:00:00.000Z",
+            "validation_signal_seen"
+          ),
+          fact(
+            "fact_2",
+            "ws_validation_before_completion",
+            "2026-07-01T11:30:00.000Z",
+            "completion_claim_seen"
+          ),
+          fact(
+            "fact_3",
+            "ws_validation_before_completion",
+            "2026-07-01T11:31:00.000Z",
+            "next_step_signal_seen"
+          )
+        ])
+      ],
+      { now, staleThresholdMs }
+    );
+
+    expect(classification).toMatchObject({
+      attentionReason: "missing_validation",
+      severity: "high",
+      certainty: "explicit",
+      evidenceCodes: ["completion_claim_without_validation"],
+      nextStepStatus: "unclear",
+      nextStepPromptTemplateId: "run_validation"
+    });
+  });
+
   it("flags missing next steps when work is not verified done", () => {
     const [classification] = classifyWorkstreams(
       [
@@ -121,6 +158,26 @@ describe("classifyWorkstreams", () => {
       nextStepStatus: "unclear",
       nextStepPromptTemplateId: "review_stale_work"
     });
+  });
+
+  it("keeps recent non-verified work with a next step clean without validation evidence", () => {
+    const [classification] = classifyWorkstreams(
+      [
+        workstream("ws_next_step", "waiting", "2026-07-01T11:30:00.000Z", [
+          fact("fact_1", "ws_next_step", "2026-07-01T11:30:00.000Z", "next_step_signal_seen")
+        ])
+      ],
+      { now, staleThresholdMs }
+    );
+
+    expect(classification).toMatchObject({
+      attentionReason: null,
+      severity: "low",
+      nextStepStatus: "present",
+      nextStepPromptTemplateId: "no_prompt",
+      evidenceCodes: []
+    });
+    expect(classification.evidenceCodes).not.toContain("validation_signal_present");
   });
 
   it("keeps verified work clean with no prompt", () => {

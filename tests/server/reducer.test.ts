@@ -45,6 +45,16 @@ describe("reduceWorkstreams", () => {
     expect(unverified.rawState).toBe("done_claimed");
   });
 
+  it("uses id tie-break ordering for same-timestamp facts", () => {
+    const [workstream] = reduceWorkstreams([
+      fact("fact_b", "ws_tie", "2026-07-01T09:00:00.000Z", "completion_claim_seen"),
+      fact("fact_a", "ws_tie", "2026-07-01T09:00:00.000Z", "validation_signal_seen")
+    ]);
+
+    expect(workstream.facts.map((item) => item.id)).toEqual(["fact_a", "fact_b"]);
+    expect(workstream.rawState).toBe("verified_done");
+  });
+
   it("marks waiting when next-step signal exists without verified completion", () => {
     const [workstream] = reduceWorkstreams([
       fact("fact_1", "ws_waiting", "2026-07-01T09:00:00.000Z", "tool_finished"),
