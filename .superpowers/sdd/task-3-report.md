@@ -155,3 +155,54 @@ Result:
 
 - Exit code: `0`
 - `tsc --noEmit` completed successfully.
+
+## Review Fix: Remaining Task 3 Minor CLI Parsing Finding
+
+### Fix Summary
+
+- Updated integer CLI flag parsing so explicitly provided `--port` and `--stale-ms` require a following value.
+- Treat another flag token, such as `--port --mode demo`, as a missing value for the integer flag.
+- Added focused regression coverage for missing `--port` and `--stale-ms` values.
+
+### RED Evidence
+
+Command:
+
+```sh
+npm test -- tests/server/config.test.ts
+```
+
+Result:
+
+- Exit code: `1`
+- Expected failures:
+  - `--port` with no following token did not throw.
+  - `--stale-ms` with no following token did not throw.
+
+### GREEN Evidence
+
+Command:
+
+```sh
+npm test -- tests/server/config.test.ts
+```
+
+Result:
+
+- Exit code: `0`
+- `tests/server/config.test.ts`: 19 passed
+
+Command:
+
+```sh
+npm run typecheck
+```
+
+Result:
+
+- Exit code: `0`
+- `tsc --noEmit` completed successfully.
+
+### Concerns
+
+- Full test suite was not run; only the requested focused config test and typecheck were run.

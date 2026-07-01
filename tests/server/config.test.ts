@@ -38,9 +38,23 @@ describe("parseRuntimeConfig", () => {
     );
   });
 
+  it.each([
+    ["no following token", ["--mode", "demo", "--port"]],
+    ["next token is another flag", ["--port", "--mode", "demo"]]
+  ])("rejects missing port value when %s", (_case, argv) => {
+    expect(() => parseRuntimeConfig(argv, { now })).toThrow("--port must be an integer from 1 to 65535");
+  });
+
   it.each(["NaN", "Infinity", "0", "-1", "60000.5"])("rejects invalid stale-ms %s", (staleMs) => {
     expect(() => parseRuntimeConfig(["--mode", "demo", "--stale-ms", staleMs], { now })).toThrow(
       "--stale-ms must be a positive integer"
     );
+  });
+
+  it.each([
+    ["no following token", ["--mode", "demo", "--stale-ms"]],
+    ["next token is another flag", ["--stale-ms", "--mode", "demo"]]
+  ])("rejects missing stale-ms value when %s", (_case, argv) => {
+    expect(() => parseRuntimeConfig(argv, { now })).toThrow("--stale-ms must be a positive integer");
   });
 });

@@ -26,8 +26,17 @@ export function parseRuntimeConfig(argv: string[], deps: { now: Date } = { now: 
     isValid: (value: number) => boolean,
     message: string
   ): number => {
-    const raw = get(flag);
-    const value = raw === undefined ? fallback : Number(raw);
+    const index = argv.indexOf(flag);
+    if (index === -1) {
+      return fallback;
+    }
+
+    const raw = argv[index + 1];
+    if (raw === undefined || raw.startsWith("--")) {
+      throw new Error(message);
+    }
+
+    const value = Number(raw);
     if (!Number.isFinite(value) || !Number.isInteger(value) || !isValid(value)) {
       throw new Error(message);
     }
