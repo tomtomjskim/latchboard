@@ -48,3 +48,22 @@
   - 11 tests passed.
 - Typecheck: `npm run typecheck`
   - Passed.
+
+## Second Review Fix Evidence
+
+- Finding:
+  - Validation was accepted after any completion claim instead of requiring validation at or after the latest completion claim.
+- RED: `npm test -- tests/server/reducer.test.ts tests/server/classifier.test.ts`
+  - Failed with 2 regressions:
+    - Reducer returned `verified_done` for completion -> validation -> later completion.
+    - Classifier returned clean/present for completion -> validation -> later completion -> next step.
+- Fix:
+  - Updated reducer and classifier validation checks to compare validation timestamps against the latest `completion_claim_seen` timestamp.
+  - Added reducer regression coverage for completion -> validation -> later completion => `done_claimed`.
+  - Added classifier regression coverage for completion -> validation -> later completion -> next step => `missing_validation`.
+- GREEN: `npm test -- tests/server/reducer.test.ts tests/server/classifier.test.ts`
+  - Passed.
+  - 2 test files passed.
+  - 13 tests passed.
+- Typecheck: `npm run typecheck`
+  - Passed.

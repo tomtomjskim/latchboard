@@ -41,10 +41,16 @@ function hasValidationAtOrAfterCompletion(workstream: WorkstreamState): boolean 
     .filter((fact) => fact.code === "completion_claim_seen")
     .map((fact) => Date.parse(fact.occurredAt));
 
+  if (completionTimes.length === 0) {
+    return false;
+  }
+
+  const latestCompletionTime = Math.max(...completionTimes);
+
   return workstream.facts.some(
     (fact) =>
       fact.code === "validation_signal_seen" &&
-      completionTimes.some((completionTime) => Date.parse(fact.occurredAt) >= completionTime)
+      Date.parse(fact.occurredAt) >= latestCompletionTime
   );
 }
 

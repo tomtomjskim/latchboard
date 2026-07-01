@@ -94,6 +94,29 @@ describe("classifyWorkstreams", () => {
     });
   });
 
+  it("flags a later completion after validation as missing validation even with a next step", () => {
+    const [classification] = classifyWorkstreams(
+      [
+        workstream("ws_reclaimed", "done_claimed", "2026-07-01T11:35:00.000Z", [
+          fact("fact_1", "ws_reclaimed", "2026-07-01T11:00:00.000Z", "completion_claim_seen"),
+          fact("fact_2", "ws_reclaimed", "2026-07-01T11:10:00.000Z", "validation_signal_seen"),
+          fact("fact_3", "ws_reclaimed", "2026-07-01T11:30:00.000Z", "completion_claim_seen"),
+          fact("fact_4", "ws_reclaimed", "2026-07-01T11:35:00.000Z", "next_step_signal_seen")
+        ])
+      ],
+      { now, staleThresholdMs }
+    );
+
+    expect(classification).toMatchObject({
+      attentionReason: "missing_validation",
+      severity: "high",
+      certainty: "explicit",
+      evidenceCodes: ["completion_claim_without_validation"],
+      nextStepStatus: "unclear",
+      nextStepPromptTemplateId: "run_validation"
+    });
+  });
+
   it("flags missing next steps when work is not verified done", () => {
     const [classification] = classifyWorkstreams(
       [
