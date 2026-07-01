@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 
 export type RuntimeMode = "demo" | "real";
 
@@ -20,6 +20,19 @@ export function parseRuntimeConfig(argv: string[], deps: { now: Date } = { now: 
     const index = argv.indexOf(flag);
     return index === -1 ? undefined : argv[index + 1];
   };
+  const parseIntegerFlag = (
+    flag: string,
+    fallback: number,
+    isValid: (value: number) => boolean,
+    message: string
+  ): number => {
+    const raw = get(flag);
+    const value = raw === undefined ? fallback : Number(raw);
+    if (!Number.isFinite(value) || !Number.isInteger(value) || !isValid(value)) {
+      throw new Error(message);
+    }
+    return value;
+  };
 
   const mode = (get("--mode") ?? "real") as RuntimeMode;
   if (mode !== "demo" && mode !== "real") {
@@ -30,18 +43,33 @@ export function parseRuntimeConfig(argv: string[], deps: { now: Date } = { now: 
   if (mode === "real" && !input) {
     throw new Error("real mode requires --input");
   }
+  if (mode === "real" && basename(input as string) !== "events.jsonl") {
+    throw new Error("real mode --input must be named events.jsonl");
+  }
 
   const inputPath = mode === "demo" ? resolve("fixtures/demo-attention-gate.jsonl") : resolve(input as string);
+  const port = parseIntegerFlag(
+    "--port",
+    8787,
+    (value) => value >= 1 && value <= 65535,
+    "--port must be an integer from 1 to 65535"
+  );
+  const staleThresholdMs = parseIntegerFlag(
+    "--stale-ms",
+    2 * 60 * 60 * 1000,
+    (value) => value > 0,
+    "--stale-ms must be a positive integer"
+  );
 
   return {
     mode,
     inputPath,
     statePath: resolve(get("--state") ?? ".latchboard/state.json"),
     host: "127.0.0.1",
-    port: Number(get("--port") ?? "8787"),
+    port,
     token: randomBytes(18).toString("base64url"),
     timezone: get("--timezone") ?? "Asia/Seoul",
-    staleThresholdMs: Number(get("--stale-ms") ?? String(2 * 60 * 60 * 1000)),
+    staleThresholdMs,
     now: deps.now
   };
 }
