@@ -30,3 +30,14 @@ Implemented the final blocker fixes for Latchboard v0:
 ## Concerns
 
 - Node emitted the existing experimental Fetch API warning during tests. It did not fail validation.
+
+## Controller Follow-up Fix
+
+- Demo runtime now uses a fixed fixture clock (`2026-07-01T10:00:00+09:00`) so demo mode remains reproducible after the real calendar date moves on.
+- Runtime snapshot comparison ignores `generatedAt` for change detection, preventing duplicate SSE/sidecar updates when no new complete JSONL records or source status changes exist.
+- Added a regression test for no-op polls with changing clock values.
+
+Validation:
+
+- `npm test -- tests/server/store.test.ts` passed, 6 tests.
+- `npm run typecheck` passed.

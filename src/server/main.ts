@@ -4,6 +4,7 @@ import { createSnapshotRuntime } from "./store";
 
 const config = parseRuntimeConfig(process.argv.slice(2));
 const sourceType = config.mode === "demo" ? "demo" : "cmux_events";
+const now = config.mode === "demo" ? () => new Date("2026-07-01T10:00:00.000+09:00") : () => new Date();
 const runtime = createSnapshotRuntime({
   mode: config.mode,
   inputPath: config.inputPath,
@@ -11,7 +12,7 @@ const runtime = createSnapshotRuntime({
   sourceType,
   timezone: config.timezone,
   staleThresholdMs: config.staleThresholdMs,
-  now: () => new Date()
+  now
 });
 await runtime.pollOnce();
 runtime.start();

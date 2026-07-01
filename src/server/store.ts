@@ -132,6 +132,7 @@ export function createSnapshotRuntime(options: SnapshotRuntimeOptions): Snapshot
   let sourceStatus = emptySourceStatus(false);
   let snapshot = buildCurrentSnapshot();
   let interval: NodeJS.Timeout | undefined;
+  let hasWrittenSnapshot = false;
   const listeners = new Set<(snapshot: TodaySnapshot) => void>();
 
   function buildCurrentSnapshot(): TodaySnapshot {
@@ -161,7 +162,13 @@ export function createSnapshotRuntime(options: SnapshotRuntimeOptions): Snapshot
     }
   }
 
+  function comparableSnapshot(value: TodaySnapshot): Omit<TodaySnapshot, "generatedAt"> {
+    const { generatedAt: _generatedAt, ...comparable } = value;
+    return comparable;
+  }
+
   async function pollOnce(): Promise<TodaySnapshot> {
+    const previousSnapshot = snapshot;
     const read = readJsonlSince(cursor);
     cursor = read.cursor;
     sourceStatus = mergeSourceStatus(sourceStatus, read.status);
@@ -171,9 +178,14 @@ export function createSnapshotRuntime(options: SnapshotRuntimeOptions): Snapshot
     }
 
     const nextSnapshot = buildCurrentSnapshot();
-    const changed = JSON.stringify(nextSnapshot) !== JSON.stringify(snapshot);
-    snapshot = nextSnapshot;
-    writeSnapshot(options.statePath, snapshot);
+    const changed =
+      JSON.stringify(comparableSnapshot(nextSnapshot)) !== JSON.stringify(comparableSnapshot(previousSnapshot));
+
+    if (changed || !hasWrittenSnapshot) {
+      snapshot = nextSnapshot;
+      writeSnapshot(options.statePath, snapshot);
+      hasWrittenSnapshot = true;
+    }
 
     if (changed) {
       publish(snapshot);

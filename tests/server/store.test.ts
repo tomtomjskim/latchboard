@@ -142,6 +142,44 @@ describe("createSnapshotRuntime", () => {
     expect(JSON.parse(readFileSync(statePath, "utf8"))).toEqual(updated);
   });
 
+  it("does not publish duplicate updates when only generatedAt would change", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "latchboard-runtime-stable-"));
+    const inputPath = join(dir, "events.jsonl");
+    const statePath = join(dir, "state.json");
+    let tick = 0;
+    writeFileSync(
+      inputPath,
+      '{"kind":"demo","sessionId":"stable-session","time":"2026-07-01T09:00:00.000+09:00","signals":["session_started","next_step_signal_seen"]}\n'
+    );
+    const runtime = createSnapshotRuntime({
+      mode: "demo",
+      inputPath,
+      statePath,
+      sourceType: "demo",
+      timezone: "Asia/Seoul",
+      staleThresholdMs: 2 * 60 * 60 * 1000,
+      now: () => new Date(`2026-07-01T09:${String(tick++).padStart(2, "0")}:00.000+09:00`)
+    });
+
+    await runtime.pollOnce();
+    let updateCount = 0;
+    runtime.subscribe(() => {
+      updateCount += 1;
+    });
+
+    await runtime.pollOnce();
+
+    expect(updateCount).toBe(0);
+
+    appendFileSync(
+      inputPath,
+      '{"kind":"demo","sessionId":"stable-session","time":"2026-07-01T09:05:00.000+09:00","signals":["completion_claim_seen","validation_signal_seen"]}\n'
+    );
+    await runtime.pollOnce();
+
+    expect(updateCount).toBe(1);
+  });
+
   it("uses configured timezone date and filters workstreams to that local day", async () => {
     const dir = mkdtempSync(join(tmpdir(), "latchboard-today-"));
     const inputPath = join(dir, "events.jsonl");
