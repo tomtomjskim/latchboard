@@ -2,13 +2,13 @@
 
 ## Summary
 
-- Added `.nvmrc` with Node 22 guidance.
+- Added `.nvmrc` with Node 18 guidance.
 - Added MIT `LICENSE` for the public release.
 - Updated `package.json` release metadata:
   - `version`: `0.1.0`
   - `private`: `false`
   - `license`: `MIT`
-  - `engines.node`: `>=22 <23`
+  - `engines.node`: `>=18.12 <23`
 - Regenerated package-lock metadata with `npm install --package-lock-only`.
 
 ## Validation
@@ -16,8 +16,8 @@
 - `npm pkg get name version private license engines scripts`: passed.
   - Note: npm 8 omitted `private: false` from this command output, but `package.json` contains `"private": false`.
 - `npm install --package-lock-only`: passed.
-  - Warning: current local Node is `v18.12.1`, below the new required engine `>=22 <23`.
-  - Existing audit output reported 5 vulnerabilities.
+  - No engine warnings with local Node `v18.12.1`.
+  - Existing default npm audit output reported 5 dev-audit vulnerabilities; the release gate uses `npm audit --omit=dev`.
 - `npm test -- tests/scaffold.test.ts`: passed.
   - 1 test file passed, 2 tests passed.
 
