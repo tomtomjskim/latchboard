@@ -10,6 +10,7 @@
   "scripts": {
     "demo": "tsx src/server/main.ts --mode demo",
     "dev": "tsx src/server/main.ts",
+    "release:preflight": "node scripts/release-preflight.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "playwright test",

@@ -14,6 +14,7 @@ Run from a clean checkout:
 
 ```bash
 npm ci
+npm run release:preflight
 npm test
 npm run typecheck
 npm run build
