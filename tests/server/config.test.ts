@@ -32,6 +32,14 @@ describe("parseRuntimeConfig", () => {
     expect(config.staleThresholdMs).toBe(60000);
   });
 
+  it("keeps repo aliases disabled unless the opt-in flag is present", () => {
+    const disabled = parseRuntimeConfig(["--mode", "demo"], { now });
+    const enabled = parseRuntimeConfig(["--mode", "demo", "--show-repo-aliases"], { now });
+
+    expect(disabled.showRepoAliases).toBe(false);
+    expect(enabled.showRepoAliases).toBe(true);
+  });
+
   it("accepts port 0 for ephemeral test servers", () => {
     const config = parseRuntimeConfig(["--mode", "demo", "--port", "0"], { now });
 

@@ -12,6 +12,7 @@ export type RuntimeConfig = {
   token: string;
   timezone: string;
   staleThresholdMs: number;
+  showRepoAliases: boolean;
   now: Date;
 };
 
@@ -79,6 +80,7 @@ export function parseRuntimeConfig(argv: string[], deps: { now: Date } = { now: 
     token: randomBytes(18).toString("base64url"),
     timezone: get("--timezone") ?? "Asia/Seoul",
     staleThresholdMs,
+    showRepoAliases: argv.includes("--show-repo-aliases"),
     now: deps.now
   };
 }

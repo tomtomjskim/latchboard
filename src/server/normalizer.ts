@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import type { SafeFact, SafeFactCode, SafeSourceEventType, SourceType } from "../shared/contracts";
+import { userInfo } from "node:os";
+import type { SafeFact, SafeFactCode, SafeSourceEventType, ScopeAlias, SourceType } from "../shared/contracts";
 import type { JsonLineRecord } from "./events-adapter";
 
 const allowedCodes = new Set<SafeFactCode>([
@@ -62,6 +63,29 @@ const cmuxNeutralActivityNames = new Set([
   "workspace.created",
   "workspace.selected"
 ]);
+const unsafeAliasFragments = [
+  "accesskey",
+  "api_key",
+  "apikey",
+  "auth",
+  "canary",
+  "confidential",
+  "cookie",
+  "credential",
+  "ghp",
+  "password",
+  "private_key",
+  "privatekey",
+  "secretkey",
+  "skproj",
+  "secret",
+  "token"
+];
+const localAccountAlias = userInfo().username.toLowerCase();
+
+export type NormalizeOptions = {
+  showRepoAliases?: boolean;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -178,6 +202,67 @@ function cmuxScopeIdsFor(value: Record<string, unknown>, fields: CmuxIdentityFie
   return Array.from(new Set(ids));
 }
 
+function lastPathSegment(value: string): string | undefined {
+  const trimmed = value.trim().replace(/[\\/]+$/, "");
+  const parts = trimmed.split(/[\\/]+/).filter(Boolean);
+  return parts[parts.length - 1];
+}
+
+function sanitizeRepoAliasLabel(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const label = value.trim();
+  if (!label || label.length < 2 || label.length > 48) {
+    return undefined;
+  }
+  if (label === "." || label === ".." || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(label)) {
+    return undefined;
+  }
+
+  const lowered = label.toLowerCase();
+  const compacted = lowered.replace(/[^a-z0-9]/g, "");
+  if (unsafeAliasFragments.some((fragment) => lowered.includes(fragment) || compacted.includes(fragment))) {
+    return undefined;
+  }
+  if (localAccountAlias.length >= 3 && lowered === localAccountAlias) {
+    return undefined;
+  }
+
+  return label;
+}
+
+function safeRepoAliasLabelFromPath(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  return sanitizeRepoAliasLabel(lastPathSegment(value));
+}
+
+export function sanitizeScopeAlias(value: unknown): ScopeAlias | undefined {
+  if (!isRecord(value) || value.kind !== "repo") {
+    return undefined;
+  }
+
+  const label = sanitizeRepoAliasLabel(value.label);
+  return label ? { kind: "repo", label } : undefined;
+}
+
+function cmuxScopeAliasFor(
+  value: Record<string, unknown>,
+  sourceType: SourceType,
+  options: NormalizeOptions
+): ScopeAlias | undefined {
+  if (!options.showRepoAliases || sourceType !== "cmux_events" || stringField(value, "name") !== "workspace.selected") {
+    return undefined;
+  }
+
+  const label = safeRepoAliasLabelFromPath(payloadRecord(value).cwd);
+  return label ? { kind: "repo", label } : undefined;
+}
+
 function safeFactCodesFor(value: Record<string, unknown>, sourceType: SourceType): SafeFactCode[] {
   const name = stringField(value, "name");
   if (sourceType === "cmux_events" && stringField(value, "type") === "event" && name) {
@@ -212,7 +297,11 @@ function workstreamIdFor(value: Record<string, unknown>, sourceType: SourceType,
   return `ws_${sourceType}_${lineNumber}`;
 }
 
-export function normalizeRecords(records: JsonLineRecord[], sourceType: SourceType): SafeFact[] {
+export function normalizeRecords(
+  records: JsonLineRecord[],
+  sourceType: SourceType,
+  options: NormalizeOptions = {}
+): SafeFact[] {
   const facts: SafeFact[] = [];
 
   records.forEach((record) => {
@@ -221,6 +310,7 @@ export function normalizeRecords(records: JsonLineRecord[], sourceType: SourceTy
     const signals = safeFactCodesFor(value, sourceType);
     const payload = payloadRecord(value);
     const name = stringField(value, "name");
+    const scopeAlias = cmuxScopeAliasFor(value, sourceType, options);
     const relatedScopeIds =
       sourceType === "cmux_events"
         ? cmuxScopeIdsFor(value, cmuxIdentityFieldsForName(name)).filter((id) => id !== workstreamId)
@@ -233,6 +323,7 @@ export function normalizeRecords(records: JsonLineRecord[], sourceType: SourceTy
         occurredAt: safeTime(value.time, value.occurred_at, payload._received_at),
         workstreamId,
         ...(relatedScopeIds.length > 0 ? { relatedScopeIds } : {}),
+        ...(scopeAlias ? { scopeAlias } : {}),
         code,
         sourceEventType: name && sourceType === "cmux_events" ? cmuxSourceEventType(name) : sourceEventType(value.kind)
       });

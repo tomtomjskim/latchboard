@@ -128,6 +128,78 @@ describe("buildSnapshot", () => {
     });
     expect(JSON.stringify(snapshot)).not.toContain("opaque-workspace");
   });
+
+  it("carries safe cmux scope aliases into summaries and parent hints", () => {
+    const workspaceFact: SafeFact = {
+      id: "fact_workspace",
+      sourceType: "cmux_events",
+      occurredAt: "2026-07-02T05:00:00.000Z",
+      workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      code: "activity_seen",
+      sourceEventType: "system",
+      scopeAlias: { kind: "repo", label: "stock-auto" }
+    };
+    const sessionFact: SafeFact = {
+      id: "fact_session",
+      sourceType: "cmux_events",
+      occurredAt: "2026-07-02T05:05:00.000Z",
+      workstreamId: "ws_cmux_events_session_bbbbbbbb22222222",
+      relatedScopeIds: ["ws_cmux_events_workspace_aaaaaaaa11111111"],
+      code: "tool_started",
+      sourceEventType: "tool"
+    };
+
+    const snapshot = buildSnapshot({
+      mode: "real",
+      date: "2026-07-02",
+      timezone: "Asia/Seoul",
+      generatedAt: "2026-07-02T05:10:00.000Z",
+      sourceStatus,
+      workstreams: [
+        workstream("ws_cmux_events_workspace_aaaaaaaa11111111", "running", [workspaceFact]),
+        workstream("ws_cmux_events_session_bbbbbbbb22222222", "running", [sessionFact])
+      ],
+      classifications: [
+        classification("ws_cmux_events_workspace_aaaaaaaa11111111", null),
+        classification("ws_cmux_events_session_bbbbbbbb22222222", null)
+      ]
+    });
+
+    const workspace = snapshot.workstreams.find((row) => row.scopeKind === "workspace");
+    const session = snapshot.workstreams.find((row) => row.scopeKind === "session");
+
+    expect(workspace).toMatchObject({
+      scopeAlias: { kind: "repo", label: "stock-auto" }
+    });
+    expect(session).toMatchObject({
+      parentScopeAlias: { kind: "repo", label: "stock-auto" }
+    });
+  });
+
+  it("drops unsafe scope aliases before emitting public summaries", () => {
+    const workspaceFact: SafeFact = {
+      id: "fact_workspace",
+      sourceType: "cmux_events",
+      occurredAt: "2026-07-02T05:00:00.000Z",
+      workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      code: "activity_seen",
+      sourceEventType: "system",
+      scopeAlias: { kind: "repo", label: "secret-token-project" }
+    };
+
+    const snapshot = buildSnapshot({
+      mode: "real",
+      date: "2026-07-02",
+      timezone: "Asia/Seoul",
+      generatedAt: "2026-07-02T05:10:00.000Z",
+      sourceStatus,
+      workstreams: [workstream("ws_cmux_events_workspace_aaaaaaaa11111111", "running", [workspaceFact])],
+      classifications: [classification("ws_cmux_events_workspace_aaaaaaaa11111111", null)]
+    });
+
+    expect(snapshot.workstreams[0].scopeAlias).toBeUndefined();
+    expect(JSON.stringify(snapshot)).not.toContain("secret-token-project");
+  });
 });
 
 describe("writeSnapshot", () => {

@@ -271,6 +271,12 @@ button {
   font-weight: 600;
 }
 
+.scope-alias {
+  color: #214c4f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .row-meta {
   display: -webkit-box;
   overflow: hidden;

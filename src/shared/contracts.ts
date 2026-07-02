@@ -16,12 +16,18 @@ export type SafeFactCode =
 export type SafeSourceEventType = "session" | "tool" | "assistant" | "system" | "unknown";
 export type ScopeKind = "workspace" | "session" | "surface" | "pane" | "window" | "workstream";
 
+export type ScopeAlias = {
+  kind: "repo";
+  label: string;
+};
+
 export type SafeFact = {
   id: string;
   sourceType: SourceType;
   occurredAt: string;
   workstreamId: string;
   relatedScopeIds?: string[];
+  scopeAlias?: ScopeAlias;
   code: SafeFactCode;
   sourceEventType: SafeSourceEventType;
 };
@@ -79,9 +85,11 @@ export type AttentionRow = {
   workstreamId: string;
   label: string;
   scopeKind: ScopeKind;
+  scopeAlias?: ScopeAlias;
   parentScopeId?: string;
   parentLabel?: string;
   parentScopeKind?: ScopeKind;
+  parentScopeAlias?: ScopeAlias;
   lastActivityAt: string;
   lastSignalCode: SafeFactCode;
   classification: Classification;
@@ -91,9 +99,11 @@ export type WorkstreamSummary = {
   workstreamId: string;
   label: string;
   scopeKind: ScopeKind;
+  scopeAlias?: ScopeAlias;
   parentScopeId?: string;
   parentLabel?: string;
   parentScopeKind?: ScopeKind;
+  parentScopeAlias?: ScopeAlias;
   lastActivityAt: string;
   rawState: RawState;
   lastSignalCode: SafeFactCode;
