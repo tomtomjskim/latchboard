@@ -113,10 +113,14 @@ git commit -m "chore: add public release metadata"
 **Files:**
 - Modify: `README.md`
 - Create: `docs/release-checklist.md`
+- Create: `docs/input-format.md`
+- Create: `docs/troubleshooting.md`
+- Create: `SECURITY.md`
+- Create: `CONTRIBUTING.md`
 
 **Interfaces:**
-- Consumes: Runtime flags from `src/server/config.ts` and scripts from `package.json`.
-- Produces: Fresh-clone instructions, local operating model, and repeatable release checks.
+- Consumes: Runtime flags from `src/server/config.ts`, safe event fields from `src/server/normalizer.ts`, npm scripts from `package.json`, and privacy constraints from `docs/privacy.md`.
+- Produces: Fresh-clone instructions, input format documentation, troubleshooting guide, security policy, contribution checks, and repeatable release checks.
 
 - [ ] **Step 1: Rewrite README for fresh clone**
 
@@ -164,6 +168,14 @@ The smoke-test note must say Playwright browser binaries may require:
 npx playwright install chromium
 ```
 
+The README must state:
+
+- Node.js `>=18.12 <23` and npm are required.
+- Latchboard is source-distributed for local use; npm package publishing is not the primary distribution path.
+- `npm run demo` writes `.latchboard/state.json`, which is ignored by git.
+- The expected demo result is 4 Attention Queue rows and 5 All Workstreams rows.
+- Planning Inbox is future v0.2 work and is not implemented in v0.
+
 - [ ] **Step 2: Add release checklist**
 
 Create `docs/release-checklist.md` with sections:
@@ -188,12 +200,120 @@ Create `docs/release-checklist.md` with sections:
 
 The GitHub Publish section must not assume a remote exists. It must instruct the operator to add `origin` only after choosing the public repository owner and URL.
 
-- [ ] **Step 3: Validate docs links and commands**
+- [ ] **Step 3: Add input format docs**
+
+Create `docs/input-format.md` with sections:
+
+```markdown
+# Latchboard Input Format
+
+## File Name Requirement
+
+## Minimal JSONL Event
+
+## Accepted Identity Fields
+
+## Accepted Signals
+
+## Accepted Kinds
+
+## Privacy Rules
+
+## Malformed Records
+
+## Example File
+```
+
+The minimal JSONL event must be:
+
+```json
+{"time":"2026-07-02T09:10:00.000+09:00","source":"cmux","sessionId":"opaque-session-id","kind":"assistant_turn","signals":["completion_claim_seen","next_step_signal_seen"]}
+```
+
+The Accepted Identity Fields section must list `workstreamId`, `sessionId`, `threadId`, `conversationId`, and `runId`.
+
+The Accepted Signals section must list `completion_claim_seen`, `validation_signal_seen`, `next_step_signal_seen`, `blocked_signal_seen`, and `unblocked_signal_seen`.
+
+The Privacy Rules section must say not to include raw prompts, terminal output, full paths, repo names, branch names, commands, tokens, secrets, or customer identifiers.
+
+- [ ] **Step 4: Add troubleshooting docs**
+
+Create `docs/troubleshooting.md` with sections:
+
+```markdown
+# Latchboard Troubleshooting
+
+## Node Version
+
+## Playwright Browser Missing
+
+## Port Already In Use
+
+## Real Mode Input Error
+
+## Empty Dashboard
+
+## Generated State Files
+```
+
+The Playwright Browser Missing section must include:
+
+```bash
+npx playwright install chromium
+```
+
+The Real Mode Input Error section must explain that real mode needs an explicit input file named `events.jsonl`.
+
+- [ ] **Step 5: Add security policy**
+
+Create `SECURITY.md` with sections:
+
+```markdown
+# Security Policy
+
+## Supported Versions
+
+## Local-Only Threat Model
+
+## Reporting a Vulnerability
+
+## Sensitive Data Rules
+```
+
+The Reporting a Vulnerability section must instruct public users to open a GitHub issue with no secrets and to remove tokens, paths, raw prompts, terminal output, and customer identifiers from reports.
+
+- [ ] **Step 6: Add contribution guide**
+
+Create `CONTRIBUTING.md` with sections:
+
+```markdown
+# Contributing
+
+## Development Setup
+
+## Validation
+
+## Privacy Boundary
+
+## Pull Request Checklist
+```
+
+The Validation section must include:
+
+```bash
+npm ci
+npm test
+npm run typecheck
+npm run build
+npm run test:smoke
+```
+
+- [ ] **Step 7: Validate docs links and commands**
 
 Run:
 
 ```bash
-rg -n "docs/release-checklist.md|npx playwright install chromium|npm ci|npm run demo|MIT" README.md docs/release-checklist.md
+rg -n "docs/release-checklist.md|docs/input-format.md|docs/troubleshooting.md|SECURITY.md|CONTRIBUTING.md|npx playwright install chromium|npm ci|npm run demo|MIT|>=18.12 <23|4 Attention Queue|5 All Workstreams" README.md docs/release-checklist.md docs/input-format.md docs/troubleshooting.md SECURITY.md CONTRIBUTING.md
 npm test -- tests/scaffold.test.ts
 ```
 
@@ -202,10 +322,10 @@ Expected:
 - The search finds all release docs anchors and required commands.
 - scaffold tests pass.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add README.md docs/release-checklist.md
+git add README.md docs/release-checklist.md docs/input-format.md docs/troubleshooting.md SECURITY.md CONTRIBUTING.md
 git commit -m "docs: prepare public release guide"
 ```
 
