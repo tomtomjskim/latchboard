@@ -1,6 +1,7 @@
 export type SourceType = "cmux_events" | "demo";
 
 export type SafeFactCode =
+  | "activity_seen"
   | "session_started"
   | "tool_started"
   | "tool_finished"

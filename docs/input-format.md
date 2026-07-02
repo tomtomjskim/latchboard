@@ -8,14 +8,29 @@ Real mode requires an explicit input file named `events.jsonl`:
 npm run dev -- --input /path/to/events.jsonl
 ```
 
+On a local cmux setup that writes `~/.cmuxterm/events.jsonl`, run:
+
+```bash
+npm run dev:cmux
+```
+
 Files with other names are rejected in real mode.
 
-## Minimal JSONL Event
+## Native cmux Event
 
-Each line must be one JSON object. A minimal safe event is:
+Each line must be one native cmux JSON object. Real mode reads allowlisted
+metadata from the event envelope and ignores top-level `signals`.
+
+A minimal neutral activity event is:
 
 ```json
-{"time":"2026-07-02T09:10:00.000+09:00","source":"cmux","sessionId":"opaque-session-id","kind":"assistant","signals":["completion_claim_seen","next_step_signal_seen"]}
+{"type":"event","name":"window.keyed","occurred_at":"2026-07-02T05:19:42.996Z","payload":{"workspace_id":"opaque-workspace-id","window_id":"opaque-window-id"}}
+```
+
+A minimal tool lifecycle event is:
+
+```json
+{"type":"event","name":"agent.hook.PreToolUse","occurred_at":"2026-07-02T05:10:00.000Z","payload":{"session_id":"opaque-session-id"}}
 ```
 
 ## Accepted Identity Fields
@@ -23,43 +38,59 @@ Each line must be one JSON object. A minimal safe event is:
 Latchboard groups events into workstreams from the first non-empty identity field
 it finds:
 
-- `workstreamId`
-- `sessionId`
-- `threadId`
-- `conversationId`
-- `runId`
+- `payload.session_id`
+- `payload.surface_id`
+- `payload.pane_id`
+- `payload.workspace_id`
+- `payload.window_id`
+- top-level `session_id`
+- top-level `surface_id`
+- top-level `pane_id`
+- top-level `workspace_id`
+- top-level `window_id`
 
 Use opaque identifiers. Do not use repo names, paths, branch names, customer
 names, or other meaningful local labels as identifiers.
 
-## Accepted Signals
+## Accepted Native Events
 
-Use safe signal names only:
+Native cmux event names are reduced to safe signal names:
 
+- `agent.hook.SessionStart` and `agent.hook.UserPromptSubmit` become
+  `session_started`.
+- `agent.hook.PreToolUse` and `feed.item.received` become `tool_started`.
+- `feed.item.completed` becomes `tool_finished`.
+- `agent.hook.Stop` becomes `activity_seen`.
+- Neutral UI events such as `window.*`, `pane.*`, `surface.*`,
+  `workspace.*`, and `notification.*` become `activity_seen`.
+- Unknown native cmux event names are ignored.
+
+`activity_seen` means a live source was active, but no actionable task state was
+observed. Recent activity-only workstreams are visible but do not create a
+missing-next-step or stale alert.
+
+Native cmux `agent.hook.Stop` is treated as lifecycle activity, not as
+`completion_claim_seen`. Completion, validation, and next-step state are not
+inferred from `Stop` or arbitrary top-level `signals`.
+
+## Demo Fixture Signals
+
+The `signals` array is only trusted for demo fixtures and internal tests, not
+for real cmux mode. Demo fixtures may use:
+
+- `activity_seen`
+- `session_started`
+- `tool_started`
+- `tool_finished`
+- `tool_failed`
 - `completion_claim_seen`
 - `validation_signal_seen`
 - `next_step_signal_seen`
 - `blocked_signal_seen`
+- `idle_signal_seen`
 
 Current v0 blocked-work resolution is derived from a later
 `validation_signal_seen` or `next_step_signal_seen`.
-
-The v0 normalizer also accepts implementation signals used by fixtures and
-internal state derivation, including `session_started`, `tool_started`,
-`tool_finished`, `tool_failed`, and `idle_signal_seen`.
-
-## Accepted Kinds
-
-The normalizer maps event kinds to a safe source event type. These values are
-recognized directly:
-
-- `session`
-- `tool`
-- `assistant`
-- `system`
-
-Any other kind is treated as `unknown`. Do not place raw source event names,
-prompt text, terminal text, command text, paths, or repo names in `kind`.
 
 ## Privacy Rules
 
@@ -69,10 +100,9 @@ names, commands, tokens, secrets, or customer identifiers.
 Input events should contain only:
 
 - timestamp metadata,
-- an opaque source label such as `cmux`,
+- an allowlisted native cmux event name,
 - one opaque workstream identity field,
-- a safe kind,
-- safe signal names.
+- safe cmux envelope metadata.
 
 ## Malformed Records
 
@@ -80,12 +110,12 @@ Malformed JSONL lines are counted as malformed source records. Latchboard should
 keep serving sanitized source status instead of exposing the raw malformed line.
 
 Records with missing or unknown fields are normalized to safe fallback values
-where possible. Unknown signal values become `unknown_safe_event`.
+where possible. Unknown native cmux event names are ignored.
 
 ## Example File
 
 ```jsonl
-{"time":"2026-07-02T09:10:00.000+09:00","source":"cmux","sessionId":"opaque-session-1","kind":"assistant","signals":["completion_claim_seen"]}
-{"time":"2026-07-02T09:12:00.000+09:00","source":"cmux","sessionId":"opaque-session-1","kind":"assistant","signals":["validation_signal_seen","next_step_signal_seen"]}
-{"time":"2026-07-02T09:20:00.000+09:00","source":"cmux","threadId":"opaque-thread-2","kind":"system","signals":["blocked_signal_seen"]}
+{"type":"event","name":"window.keyed","occurred_at":"2026-07-02T05:19:42.996Z","payload":{"workspace_id":"opaque-workspace-1","window_id":"opaque-window-1"}}
+{"type":"event","name":"agent.hook.PreToolUse","occurred_at":"2026-07-02T05:20:00.000Z","payload":{"session_id":"opaque-session-1"}}
+{"type":"event","name":"feed.item.completed","occurred_at":"2026-07-02T05:20:30.000Z","payload":{"session_id":"opaque-session-1"}}
 ```

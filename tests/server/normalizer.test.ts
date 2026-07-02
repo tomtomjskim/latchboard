@@ -130,4 +130,173 @@ describe("normalizeRecords", () => {
     expect(JSON.stringify(facts)).not.toContain("first");
     expect(JSON.stringify(facts)).not.toContain("second");
   });
+
+  it("maps cmux agent hook events into safe facts without leaking payload fields", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 101,
+          value: {
+            type: "event",
+            name: "agent.hook.PreToolUse",
+            occurred_at: "2026-07-02T05:10:00.000Z",
+            workspace_id: "opaque-workspace-1",
+            payload: {
+              session_id: "opaque-session-1",
+              cwd: "/example/private/acme",
+              tool_name: "Bash",
+              tool_input: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW"
+            }
+          }
+        },
+        {
+          lineNumber: 102,
+          value: {
+            type: "event",
+            name: "feed.item.completed",
+            occurred_at: "2026-07-02T05:12:00.000Z",
+            workspace_id: "opaque-workspace-1",
+            payload: {
+              session_id: "opaque-session-1",
+              cwd: "/example/private/acme",
+              result: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW"
+            }
+          }
+        }
+      ],
+      "cmux_events"
+    );
+
+    expect(facts.map((fact) => fact.code)).toEqual(["tool_started", "tool_finished"]);
+    expect(facts.map((fact) => fact.occurredAt)).toEqual([
+      "2026-07-02T05:10:00.000Z",
+      "2026-07-02T05:12:00.000Z"
+    ]);
+    expect(facts[0].workstreamId).toBe(facts[1].workstreamId);
+    expect(facts[0].sourceEventType).toBe("tool");
+    expect(facts[1].sourceEventType).toBe("tool");
+    expect(JSON.stringify(facts)).not.toContain("opaque-session-1");
+    expect(JSON.stringify(facts)).not.toContain("/example/private/acme");
+    expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
+  });
+
+  it("treats cmux stop hooks as lifecycle activity, not completion claims", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 151,
+          value: {
+            type: "event",
+            name: "agent.hook.Stop",
+            occurred_at: "2026-07-02T05:12:00.000Z",
+            workspace_id: "opaque-workspace-1",
+            payload: {
+              session_id: "opaque-session-1",
+              result: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW"
+            }
+          }
+        }
+      ],
+      "cmux_events"
+    );
+
+    expect(facts).toEqual([
+      expect.objectContaining({
+        code: "activity_seen",
+        sourceEventType: "assistant"
+      })
+    ]);
+    expect(JSON.stringify(facts)).not.toContain("opaque-session-1");
+    expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
+  });
+
+  it("does not trust top-level signals from native cmux events", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 161,
+          value: {
+            type: "event",
+            name: "window.keyed",
+            occurred_at: "2026-07-02T05:19:42.996Z",
+            signals: ["validation_signal_seen", "next_step_signal_seen"],
+            payload: {
+              workspace_id: "opaque-workspace-1"
+            }
+          }
+        }
+      ],
+      "cmux_events"
+    );
+
+    expect(facts.map((fact) => fact.code)).toEqual(["activity_seen"]);
+  });
+
+  it("uses the first parseable timestamp candidate", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 171,
+          value: {
+            kind: "demo",
+            sessionId: "opaque-session-171",
+            time: "not-a-timestamp",
+            occurred_at: "2026-07-02T05:19:42.996Z",
+            signals: ["activity_seen"]
+          }
+        }
+      ],
+      "demo"
+    );
+
+    expect(facts[0].occurredAt).toBe("2026-07-02T05:19:42.996Z");
+  });
+
+  it.each([
+    "window.keyed",
+    "window.unkeyed",
+    "surface.focused",
+    "surface.selected",
+    "pane.focused",
+    "workspace.selected",
+    "notification.created",
+    "notification.read",
+    "notification.removed"
+  ])("maps neutral cmux activity %s into a safe non-actionable fact", (name) => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 201,
+          value: {
+            type: "event",
+            name,
+            occurred_at: "2026-07-02T05:19:42.996Z",
+            workspace_id: "opaque-workspace-1",
+            payload: {
+              workspace_id: "opaque-workspace-1",
+              window_id: "opaque-window-1",
+              cwd: "/example/private/acme",
+              message: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW"
+            }
+          }
+        }
+      ],
+      "cmux_events"
+    );
+
+    expect(facts).toEqual([
+      expect.objectContaining({
+        id: expect.stringMatching(/^fact_ws_cmux_events_[a-f0-9]{16}_201_0$/),
+        sourceType: "cmux_events",
+        occurredAt: "2026-07-02T05:19:42.996Z",
+        workstreamId: expect.stringMatching(/^ws_cmux_events_[a-f0-9]{16}$/),
+        code: "activity_seen",
+        sourceEventType: "system"
+      })
+    ]);
+    expect(JSON.stringify(facts)).not.toContain("opaque-workspace-1");
+    expect(JSON.stringify(facts)).not.toContain("opaque-window-1");
+    expect(JSON.stringify(facts)).not.toContain("/example/private/acme");
+    expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
+  });
 });

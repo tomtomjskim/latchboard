@@ -68,6 +68,39 @@ const snapshot: TodaySnapshot = {
   dailySummary: { unresolved: 1, verifiedDone: 1, carryOver: 0 }
 };
 
+const activityOnlySnapshot: TodaySnapshot = {
+  mode: "real",
+  date: "2026-07-02",
+  timezone: "Asia/Seoul",
+  generatedAt: "2026-07-02T14:30:00.000+09:00",
+  sourceStatus: {
+    connected: true,
+    parsedLineCount: 12,
+    malformedLineCount: 0,
+    partialLineCount: 0
+  },
+  attention: [],
+  workstreams: [
+    {
+      workstreamId: "ws_activity",
+      label: "Workstream 1",
+      lastActivityAt: "2026-07-02T14:29:00.000+09:00",
+      rawState: "running",
+      classification: {
+        workstreamId: "ws_activity",
+        attentionReason: null,
+        severity: "low",
+        certainty: "explicit",
+        evidenceCodes: [],
+        nextStepStatus: "unclear",
+        nextStepPromptTemplateId: "no_prompt",
+        since: "2026-07-02T14:29:00.000+09:00"
+      }
+    }
+  ],
+  dailySummary: { unresolved: 0, verifiedDone: 0, carryOver: 0 }
+};
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -79,6 +112,8 @@ describe("AppView", () => {
     render(<AppView snapshot={snapshot} />);
 
     expect(screen.getByText("Latchboard")).toBeTruthy();
+    expect(screen.getByText("Demo fixture")).toBeTruthy();
+    expect(screen.getByText("Not live data")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Attention Queue" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "All Workstreams" })).toBeTruthy();
     expect(screen.getByText("Daily Summary")).toBeTruthy();
@@ -98,6 +133,47 @@ describe("AppView", () => {
     expect(body).not.toContain("fixtures");
     expect(body).not.toContain("canary");
     expect(body).not.toContain("ws_attention");
+  });
+
+  it("labels real snapshots as live local data", () => {
+    render(<AppView snapshot={{ ...snapshot, mode: "real", date: "2026-07-02" }} />);
+
+    expect(screen.getByText("Real")).toBeTruthy();
+    expect(screen.getByText("Live local data")).toBeTruthy();
+    expect(screen.queryByText("Demo fixture")).toBeNull();
+    expect(screen.queryByText("Not live data")).toBeNull();
+  });
+
+  it("does not label disconnected real snapshots as live", () => {
+    render(
+      <AppView
+        snapshot={{
+          ...activityOnlySnapshot,
+          sourceStatus: { ...activityOnlySnapshot.sourceStatus, connected: false }
+        }}
+      />
+    );
+
+    expect(screen.getByText("Real")).toBeTruthy();
+    expect(screen.getByText("Source disconnected")).toBeTruthy();
+    expect(screen.getByText("Disconnected")).toBeTruthy();
+    expect(screen.queryByText("Live local data")).toBeNull();
+  });
+
+  it("renders real activity-only workstreams without attention prompts", () => {
+    render(<AppView snapshot={activityOnlySnapshot} />);
+
+    expect(screen.getByText("Real")).toBeTruthy();
+    expect(screen.getByText("Live local data")).toBeTruthy();
+    expect(screen.getByText("No attention items")).toBeTruthy();
+    expect(screen.getByText("1 observed")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "View Workstream 1 details" })).toBeTruthy();
+    expect(screen.getAllByText("Clear").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("No attention").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("No next-step prompt is required.").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Write the next step before continuing.")).toBeNull();
+    expect(screen.queryByText("Run the planned validation and review the result.")).toBeNull();
+    expect(document.body.textContent).not.toContain("ws_activity");
   });
 
   it("opens a sanitized detail panel for a selected workstream", () => {
