@@ -109,6 +109,51 @@ const activityOnlySnapshot: TodaySnapshot = {
   dailySummary: { unresolved: 0, verifiedDone: 0, carryOver: 0 }
 };
 
+const linkedScopeSnapshot: TodaySnapshot = {
+  ...activityOnlySnapshot,
+  workstreams: [
+    {
+      workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      label: "workspace aaaaaa",
+      scopeKind: "workspace",
+      lastActivityAt: "2026-07-02T14:29:00.000+09:00",
+      rawState: "running",
+      lastSignalCode: "activity_seen",
+      classification: {
+        workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+        attentionReason: null,
+        severity: "low",
+        certainty: "explicit",
+        evidenceCodes: [],
+        nextStepStatus: "unclear",
+        nextStepPromptTemplateId: "no_prompt",
+        since: "2026-07-02T14:29:00.000+09:00"
+      }
+    },
+    {
+      workstreamId: "ws_cmux_events_session_bbbbbbbb22222222",
+      label: "session bbbbbb",
+      scopeKind: "session",
+      parentScopeId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      parentLabel: "workspace aaaaaa",
+      parentScopeKind: "workspace",
+      lastActivityAt: "2026-07-02T14:30:00.000+09:00",
+      rawState: "running",
+      lastSignalCode: "tool_started",
+      classification: {
+        workstreamId: "ws_cmux_events_session_bbbbbbbb22222222",
+        attentionReason: null,
+        severity: "low",
+        certainty: "explicit",
+        evidenceCodes: [],
+        nextStepStatus: "unclear",
+        nextStepPromptTemplateId: "no_prompt",
+        since: "2026-07-02T14:30:00.000+09:00"
+      }
+    }
+  ]
+};
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -185,6 +230,15 @@ describe("AppView", () => {
     expect(screen.queryByText("Write the next step before continuing.")).toBeNull();
     expect(screen.queryByText("Run the planned validation and review the result.")).toBeNull();
     expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
+  });
+
+  it("renders parent workspace hints for linked cmux session scopes", () => {
+    render(<AppView snapshot={linkedScopeSnapshot} />);
+
+    expect(screen.getByRole("button", { name: "View session bbbbbb details" })).toBeTruthy();
+    expect(screen.getAllByText("Parent workspace aaaaaa").length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
+    expect(document.body.textContent).not.toContain("ws_cmux_events_session_bbbbbbbb22222222");
   });
 
   it("opens a sanitized detail panel for a selected workstream", () => {

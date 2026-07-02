@@ -222,6 +222,38 @@ describe("normalizeRecords", () => {
     expect(JSON.stringify(facts)).not.toContain("opaque-surface-1");
   });
 
+  it("keeps related cmux workspace scope ids without leaking raw identity values", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 191,
+          value: {
+            type: "event",
+            name: "agent.hook.PreToolUse",
+            occurred_at: "2026-07-02T05:20:00.000Z",
+            payload: {
+              session_id: "opaque-session-1",
+              workspace_id: "opaque-workspace-1",
+              cwd: "/example/private/acme",
+              tool_input: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW"
+            }
+          }
+        }
+      ],
+      "cmux_events"
+    );
+
+    expect(facts[0].workstreamId).toMatch(/^ws_cmux_events_session_[a-f0-9]{16}$/);
+    expect(facts[0].relatedScopeIds).toEqual([
+      expect.stringMatching(/^ws_cmux_events_workspace_[a-f0-9]{16}$/)
+    ]);
+    expect(facts[0].relatedScopeIds).not.toContain(facts[0].workstreamId);
+    expect(JSON.stringify(facts)).not.toContain("opaque-session-1");
+    expect(JSON.stringify(facts)).not.toContain("opaque-workspace-1");
+    expect(JSON.stringify(facts)).not.toContain("/example/private/acme");
+    expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
+  });
+
   it("treats cmux stop hooks as lifecycle activity, not completion claims", () => {
     const facts = normalizeRecords(
       [

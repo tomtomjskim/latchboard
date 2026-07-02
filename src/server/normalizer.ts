@@ -160,6 +160,24 @@ function cmuxIdentityFieldsForName(name: string | undefined): CmuxIdentityField[
     : cmuxActivityIdentityFields;
 }
 
+function cmuxScopeId(field: CmuxIdentityField, raw: string): string {
+  const digest = createHash("sha256").update(`${field}:${raw}`).digest("hex").slice(0, 16);
+  return `ws_cmux_events_${field.replace("_id", "")}_${digest}`;
+}
+
+function cmuxScopeIdsFor(value: Record<string, unknown>, fields: CmuxIdentityField[]): string[] {
+  const payload = payloadRecord(value);
+  const ids: string[] = [];
+  for (const field of fields) {
+    const raw = stringField(payload, field) ?? stringField(value, field);
+    if (raw) {
+      ids.push(cmuxScopeId(field, raw));
+    }
+  }
+
+  return Array.from(new Set(ids));
+}
+
 function safeFactCodesFor(value: Record<string, unknown>, sourceType: SourceType): SafeFactCode[] {
   const name = stringField(value, "name");
   if (sourceType === "cmux_events" && stringField(value, "type") === "event" && name) {
@@ -175,15 +193,11 @@ function safeFactCodesFor(value: Record<string, unknown>, sourceType: SourceType
 }
 
 function workstreamIdFor(value: Record<string, unknown>, sourceType: SourceType, lineNumber: number): string {
-  const payload = payloadRecord(value);
   if (sourceType === "cmux_events") {
     const name = stringField(value, "name");
-    for (const field of cmuxIdentityFieldsForName(name)) {
-      const raw = stringField(payload, field) ?? stringField(value, field);
-      if (raw) {
-        const digest = createHash("sha256").update(`${field}:${raw}`).digest("hex").slice(0, 16);
-        return `ws_${sourceType}_${field.replace("_id", "")}_${digest}`;
-      }
+    const [firstScopeId] = cmuxScopeIdsFor(value, cmuxIdentityFieldsForName(name));
+    if (firstScopeId) {
+      return firstScopeId;
     }
   }
 
@@ -207,6 +221,10 @@ export function normalizeRecords(records: JsonLineRecord[], sourceType: SourceTy
     const signals = safeFactCodesFor(value, sourceType);
     const payload = payloadRecord(value);
     const name = stringField(value, "name");
+    const relatedScopeIds =
+      sourceType === "cmux_events"
+        ? cmuxScopeIdsFor(value, cmuxIdentityFieldsForName(name)).filter((id) => id !== workstreamId)
+        : [];
 
     signals.forEach((code, index) => {
       facts.push({
@@ -214,6 +232,7 @@ export function normalizeRecords(records: JsonLineRecord[], sourceType: SourceTy
         sourceType,
         occurredAt: safeTime(value.time, value.occurred_at, payload._received_at),
         workstreamId,
+        ...(relatedScopeIds.length > 0 ? { relatedScopeIds } : {}),
         code,
         sourceEventType: name && sourceType === "cmux_events" ? cmuxSourceEventType(name) : sourceEventType(value.kind)
       });

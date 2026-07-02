@@ -133,6 +133,10 @@ function ReasonChip({ reason }: { reason: AttentionReason | null }) {
   );
 }
 
+function ParentHint({ scope }: { scope: { parentLabel?: string } }) {
+  return scope.parentLabel ? <span className="parent-hint">Parent {scope.parentLabel}</span> : null;
+}
+
 function selectedFromSnapshot(snapshot: TodaySnapshot, selectedId: string | null): WorkstreamSummary | null {
   if (selectedId) {
     const selected = snapshot.workstreams.find((workstream) => workstream.workstreamId === selectedId);
@@ -172,6 +176,12 @@ function DetailPanel({ workstream }: { workstream: WorkstreamSummary | null }) {
           <dt>Scope</dt>
           <dd>{scopeKindLabel(workstream.scopeKind)}</dd>
         </div>
+        {workstream.parentLabel ? (
+          <div>
+            <dt>Parent</dt>
+            <dd>{workstream.parentLabel}</dd>
+          </div>
+        ) : null}
         <div>
           <dt>State</dt>
           <dd>{stateLabels[workstream.rawState]}</dd>
@@ -255,6 +265,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
                   <span className="row-title-block">
                     <span className="row-title">{row.label}</span>
                     <span className="scope-pill">{scopeKindLabel(row.scopeKind)}</span>
+                    <ParentHint scope={row} />
                   </span>
                   <span>{reasonLabel(row.classification.attentionReason)}</span>
                   <span>{signalLabel(row.lastSignalCode)}</span>
@@ -296,6 +307,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
                     <span className="row-title-block">
                       <span className="row-title">{workstream.label}</span>
                       <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
+                      <ParentHint scope={workstream} />
                     </span>
                     <span>{stateLabels[workstream.rawState]}</span>
                     <span>{signalLabel(workstream.lastSignalCode)}</span>

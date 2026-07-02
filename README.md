@@ -24,7 +24,9 @@ The browser dashboard embeds the latest snapshot into the initial HTML and then
 auto-refreshes every 2 seconds. Real cmux workstreams use privacy-safe dimension
 labels such as `workspace a1b2c3` or `session d4e5f6`, and show their last safe
 signal. Neutral cmux UI activity is grouped by workspace first to reduce
-window/pane noise; agent and tool activity is grouped by session first.
+window/pane noise; agent and tool activity is grouped by session first. When a
+session/tool event also carries a workspace identity, the dashboard shows a
+privacy-safe parent hint such as `Parent workspace a1b2c3`.
 
 v0.1 still does not display repo names, paths, raw prompts, or task titles.
 Those need a separate safe metadata source before they can appear in the UI.

@@ -56,6 +56,18 @@ workspace, and notification events, Latchboard prefers workspace identity before
 surface, pane, window, and finally session. This reduces window/pane noise in
 the browser view.
 
+When one accepted cmux event contains multiple identity fields, Latchboard may
+keep additional generated ids internally as `relatedScopeIds`. If a session,
+surface, pane, or window scope is related to a workspace scope that is present
+in the same snapshot, public summaries may include:
+
+- `parentScopeId`
+- `parentLabel`
+- `parentScopeKind`
+
+These fields are generated labels only. They are not raw cmux ids and are not
+repo names, paths, branch names, prompts, commands, or task titles.
+
 Use opaque identifiers. Do not use repo names, paths, branch names, customer
 names, or other meaningful local labels as identifiers.
 
