@@ -41,3 +41,15 @@ Validation:
 
 - `npm test -- tests/server/store.test.ts` passed, 6 tests.
 - `npm run typecheck` passed.
+
+## QA Final-Gate Smoke DOM Hardening Fix
+
+- Kept the existing `/api/snapshot` assertions in `tests/smoke/demo.spec.cjs`.
+- Added browser-rendered dashboard assertions for attention row count, All Workstreams item count, visible open/observed counters, top today bar attention count, and Daily Summary values.
+- Added rendered DOM coverage that the verified done workstream appears in All Workstreams/detail context and is absent from Attention Queue rows.
+
+Validation:
+
+- Intentional red check: temporarily expected 5 rendered attention rows; `npm run test:smoke` failed at the new `.queue-row` DOM count assertion with received count 4.
+- Final green check: `npm run test:smoke` passed, 1 test.
+- UI test was not run because no production UI files were changed and stable existing locators were adequate.

@@ -19,6 +19,37 @@ test("demo server responds on loopback HTTP", async ({ page, request }) => {
   await expect(page.getByText("Blocked").first()).toBeVisible();
   await expect(page.getByText("Stale").first()).toBeVisible();
 
+  const attentionPanel = page.locator("section.attention-panel");
+  const attentionRows = attentionPanel.locator(".queue-row");
+  const allWorkstreamsPanel = page.locator("section.workstream-panel");
+  const allWorkstreamsList = page.getByRole("list", { name: "All workstreams" });
+  const dailySummary = page.getByLabel("Daily summary");
+
+  await expect(attentionRows).toHaveCount(4);
+  await expect(allWorkstreamsList.getByRole("listitem")).toHaveCount(5);
+  await expect(attentionPanel.locator(".section-heading")).toContainText("4 open");
+  await expect(allWorkstreamsPanel.locator(".section-heading")).toContainText("5 observed");
+  await expect(page.getByLabel("Today status")).toContainText("Attention 4");
+  await expect(dailySummary.locator(".summary-grid > div").filter({ hasText: "Unresolved" })).toHaveText(
+    /^Unresolved\s*4$/
+  );
+  await expect(dailySummary.locator(".summary-grid > div").filter({ hasText: "Verified" })).toHaveText(
+    /^Verified\s*1$/
+  );
+  await expect(dailySummary.locator(".summary-grid > div").filter({ hasText: "Carry-over" })).toHaveText(
+    /^Carry-over\s*1$/
+  );
+
+  await expect(attentionPanel.getByRole("button", { name: "View Workstream 5 details" })).toHaveCount(0);
+  const verifiedWorkstream = allWorkstreamsList.getByRole("button", { name: "View Workstream 5 details" });
+  await expect(verifiedWorkstream).toContainText("verified done");
+  await expect(verifiedWorkstream).toContainText("Clear");
+  await verifiedWorkstream.click();
+  const workstreamDetail = page.getByLabel("Workstream detail");
+  await expect(page.getByRole("heading", { name: "Workstream 5" })).toBeVisible();
+  await expect(workstreamDetail).toContainText("No attention");
+  await expect(workstreamDetail).toContainText("No next-step prompt is required.");
+
   const snapshot = await page.evaluate(async () => {
     const token = window.__LATCHBOARD_BOOTSTRAP__.token;
     const response = await fetch("/api/snapshot", {
