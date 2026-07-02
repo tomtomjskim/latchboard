@@ -98,6 +98,11 @@ button {
   color: #6a2424;
 }
 
+.source-issue {
+  color: #7a2c18;
+  font-weight: 800;
+}
+
 .today-metrics {
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -356,6 +361,38 @@ button {
 
 .workstream-list {
   overflow-x: auto;
+}
+
+.scope-group {
+  display: grid;
+  gap: 6px;
+}
+
+.scope-group + .scope-group {
+  border-top: 1px solid #e6eaee;
+  padding-top: 8px;
+}
+
+.scope-group-children {
+  display: grid;
+  gap: 6px;
+  padding-left: 18px;
+}
+
+.scope-group-label {
+  color: #65717b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.workspace-group-row {
+  background: #f7faf9;
+}
+
+.workstream-row.is-child {
+  border-left: 3px solid #b9c9cc;
+  background: #ffffff;
 }
 
 .workstream-row {
