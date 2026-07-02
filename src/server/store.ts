@@ -58,6 +58,7 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
       label: state.label,
       lastActivityAt: state.lastActivityAt,
       rawState: state.rawState,
+      lastSignalCode: state.facts[state.facts.length - 1]?.code ?? "unknown_safe_event",
       classification
     };
   });
@@ -68,6 +69,7 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
       workstreamId: row.workstreamId,
       label: row.label,
       lastActivityAt: row.lastActivityAt,
+      lastSignalCode: row.lastSignalCode,
       classification: row.classification
     }));
 

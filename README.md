@@ -20,6 +20,11 @@ surface, workspace, and notification events is reduced to `activity_seen`. This
 shows that the live source is current without treating UI activity alone as a
 missing next-step alert.
 
+The browser dashboard auto-refreshes every 2 seconds. Real cmux workstreams use
+stable hashed labels such as `cmux a1b2c3` and show their last safe signal. v0.1
+does not display repo names, paths, raw prompts, or task titles; those need a
+separate safe metadata source before they can appear in the UI.
+
 Latchboard is source-distributed for local use. npm package publishing is not
 the primary distribution path.
 

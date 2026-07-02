@@ -22,6 +22,7 @@ function snapshot(): TodaySnapshot {
         workstreamId: "ws_attention",
         label: "Workstream 1",
         lastActivityAt: "2026-07-01T09:30:00.000Z",
+        lastSignalCode: "completion_claim_seen",
         classification: {
           workstreamId: "ws_attention",
           attentionReason: "missing_validation",
@@ -40,6 +41,7 @@ function snapshot(): TodaySnapshot {
         label: "Workstream 1",
         lastActivityAt: "2026-07-01T09:30:00.000Z",
         rawState: "done_claimed",
+        lastSignalCode: "completion_claim_seen",
         classification: {
           workstreamId: "ws_attention",
           attentionReason: "missing_validation",

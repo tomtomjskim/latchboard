@@ -1,8 +1,10 @@
 import "./styles.css";
 import { useEffect, useMemo, useState } from "react";
-import type { AttentionReason, RawState, TodaySnapshot, WorkstreamSummary } from "../shared/contracts";
+import type { AttentionReason, RawState, SafeFactCode, TodaySnapshot, WorkstreamSummary } from "../shared/contracts";
 import { evidenceLabel, nextStepPromptLabel } from "../shared/contracts";
 import { fetchSnapshot, readBootstrapToken } from "./api";
+
+const snapshotPollMs = 2000;
 
 const reasonLabels: Record<AttentionReason, string> = {
   missing_validation: "Missing validation",
@@ -24,6 +26,20 @@ const stateLabels: Record<RawState, string> = {
   done_claimed: "done claimed",
   verified_done: "verified done",
   unknown: "unknown"
+};
+
+const signalLabels: Record<SafeFactCode, string> = {
+  activity_seen: "activity",
+  session_started: "session",
+  tool_started: "tool started",
+  tool_finished: "tool finished",
+  tool_failed: "tool failed",
+  completion_claim_seen: "completion",
+  validation_signal_seen: "validation",
+  next_step_signal_seen: "next step",
+  blocked_signal_seen: "blocked",
+  idle_signal_seen: "idle",
+  unknown_safe_event: "unknown"
 };
 
 type LoadState =
@@ -72,6 +88,10 @@ function reasonLabel(reason: AttentionReason | null): string {
 
 function reasonShortLabel(reason: AttentionReason | null): string {
   return reason ? reasonShortLabels[reason] : "OK";
+}
+
+function signalLabel(code: SafeFactCode): string {
+  return signalLabels[code];
 }
 
 function ReasonChip({ reason }: { reason: AttentionReason | null }) {
@@ -133,6 +153,10 @@ function DetailPanel({ workstream }: { workstream: WorkstreamSummary | null }) {
           <dd>{formatDateTime(workstream.lastActivityAt)}</dd>
         </div>
         <div>
+          <dt>Last Signal</dt>
+          <dd>{signalLabel(workstream.lastSignalCode)}</dd>
+        </div>
+        <div>
           <dt>Evidence</dt>
           <dd>{workstream.classification.evidenceCodes.map(evidenceLabel).join(" ")}</dd>
         </div>
@@ -163,6 +187,8 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
           <span>{snapshot.date}</span>
           <span>{formatConnection(snapshot.sourceStatus.connected)}</span>
           <span>Updated {formatDateTime(snapshot.generatedAt)}</span>
+          <span>Parsed {snapshot.sourceStatus.parsedLineCount}</span>
+          <span>Auto-refresh {snapshotPollMs / 1000}s</span>
           <span>Attention {snapshot.attention.length}</span>
         </div>
       </header>
@@ -192,6 +218,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
                   <ReasonChip reason={row.classification.attentionReason} />
                   <span className="row-title">{row.label}</span>
                   <span>{reasonLabel(row.classification.attentionReason)}</span>
+                  <span>{signalLabel(row.lastSignalCode)}</span>
                   <span>{formatDateTime(row.lastActivityAt)}</span>
                   <span>{row.classification.certainty}</span>
                   <span className="row-meta row-evidence">{row.classification.evidenceCodes.map(evidenceLabel).join(" ")}</span>
@@ -213,6 +240,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
             <div className="workstream-row workstream-head" aria-hidden="true">
               <span>Name</span>
               <span>State</span>
+              <span>Signal</span>
               <span>Attention</span>
               <span>Last Activity</span>
             </div>
@@ -228,6 +256,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
                   >
                     <span className="row-title">{workstream.label}</span>
                     <span>{stateLabels[workstream.rawState]}</span>
+                    <span>{signalLabel(workstream.lastSignalCode)}</span>
                     <span>{attentionIds.has(workstream.workstreamId) ? reasonLabel(workstream.classification.attentionReason) : "Clear"}</span>
                     <span>{formatDateTime(workstream.lastActivityAt)}</span>
                   </button>
@@ -263,32 +292,48 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
   );
 }
 
-export function App() {
+export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | undefined;
 
-    async function load() {
+    let token: string;
+    try {
+      token = readBootstrapToken();
+    } catch {
+      setState({ status: "error", message: "Snapshot unavailable" });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    async function load(initial: boolean) {
       try {
-        const token = readBootstrapToken();
         const snapshot = await fetchSnapshot(token);
         if (!cancelled) {
           setState({ status: "ready", snapshot });
         }
       } catch {
-        if (!cancelled) {
+        if (!cancelled && initial) {
           setState({ status: "error", message: "Snapshot unavailable" });
         }
       }
     }
 
-    void load();
+    void load(true);
+    interval = setInterval(() => {
+      void load(false);
+    }, pollMs);
 
     return () => {
       cancelled = true;
+      if (interval) {
+        clearInterval(interval);
+      }
     };
-  }, []);
+  }, [pollMs]);
 
   if (state.status === "loading") {
     return <main className="app app-state">Loading Latchboard</main>;

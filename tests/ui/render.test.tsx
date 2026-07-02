@@ -19,6 +19,7 @@ const snapshot: TodaySnapshot = {
       workstreamId: "ws_attention",
       label: "Workstream 1",
       lastActivityAt: "2026-07-01T09:00:00.000+09:00",
+      lastSignalCode: "completion_claim_seen",
       classification: {
         workstreamId: "ws_attention",
         attentionReason: "missing_validation",
@@ -37,6 +38,7 @@ const snapshot: TodaySnapshot = {
       label: "Workstream 1",
       lastActivityAt: "2026-07-01T09:00:00.000+09:00",
       rawState: "done_claimed",
+      lastSignalCode: "completion_claim_seen",
       classification: {
         workstreamId: "ws_attention",
         attentionReason: "missing_validation",
@@ -53,6 +55,7 @@ const snapshot: TodaySnapshot = {
       label: "Workstream 2",
       lastActivityAt: "2026-07-01T09:30:00.000+09:00",
       rawState: "verified_done",
+      lastSignalCode: "validation_signal_seen",
       classification: {
         workstreamId: "ws_verified",
         attentionReason: null,
@@ -86,6 +89,7 @@ const activityOnlySnapshot: TodaySnapshot = {
       label: "Workstream 1",
       lastActivityAt: "2026-07-02T14:29:00.000+09:00",
       rawState: "running",
+      lastSignalCode: "activity_seen",
       classification: {
         workstreamId: "ws_activity",
         attentionReason: null,
@@ -104,6 +108,7 @@ const activityOnlySnapshot: TodaySnapshot = {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
   delete window.__LATCHBOARD_BOOTSTRAP__;
 });
 
@@ -168,6 +173,7 @@ describe("AppView", () => {
     expect(screen.getByText("No attention items")).toBeTruthy();
     expect(screen.getByText("1 observed")).toBeTruthy();
     expect(screen.getByRole("button", { name: "View Workstream 1 details" })).toBeTruthy();
+    expect(screen.getAllByText("activity").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Clear").length).toBeGreaterThan(0);
     expect(screen.getAllByText("No attention").length).toBeGreaterThan(0);
     expect(screen.getAllByText("No next-step prompt is required.").length).toBeGreaterThan(0);
@@ -189,6 +195,7 @@ describe("AppView", () => {
     expect(screen.getAllByText("State").length).toBeGreaterThan(0);
     expect(screen.getAllByText("verified done").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Next Step").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("validation").length).toBeGreaterThan(0);
     expect(screen.getAllByText("No next-step prompt is required.").length).toBeGreaterThan(0);
     expect(document.body.textContent).not.toContain("ws_attention");
   });
@@ -207,6 +214,30 @@ describe("App", () => {
     expect(fetch).toHaveBeenCalledWith("/api/snapshot", {
       headers: { Authorization: "Bearer test-token" }
     });
+  });
+
+  it("refreshes the snapshot without a page reload", async () => {
+    window.__LATCHBOARD_BOOTSTRAP__ = { token: "test-token" };
+    const refreshedSnapshot: TodaySnapshot = {
+      ...activityOnlySnapshot,
+      sourceStatus: {
+        ...activityOnlySnapshot.sourceStatus,
+        parsedLineCount: 13
+      },
+      generatedAt: "2026-07-02T14:31:00.000+09:00"
+    };
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(activityOnlySnapshot), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSnapshot), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+
+    render(<App pollMs={10} />);
+
+    await waitFor(() => expect(screen.getByText("12")).toBeTruthy());
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("13")).toBeTruthy();
   });
 
   it("renders an error state when no bootstrap token is available", async () => {
