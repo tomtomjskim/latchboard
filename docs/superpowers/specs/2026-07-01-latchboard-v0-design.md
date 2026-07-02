@@ -228,7 +228,7 @@ The first viewport is a dense operational screen:
 
 1. `Today bar`: mode, date, connection, last update, attention counters.
 2. `Attention Queue`: largest region; shows rows needing operator attention.
-3. `All Workstreams`: compact table for non-attention context.
+3. `Observed Scopes`: compact table for workspace/session/workstream context.
 4. `Detail Drawer`: opens only on row selection.
 5. `Daily strip`: compact unresolved/verified/carry-over summary.
 
@@ -281,15 +281,19 @@ type TodaySnapshot = {
 type AttentionRow = {
   workstreamId: string;
   label: string;
+  scopeKind: "workspace" | "session" | "surface" | "pane" | "window" | "workstream";
   lastActivityAt: string;
+  lastSignalCode: SafeFactCode;
   classification: Classification;
 };
 
 type WorkstreamSummary = {
   workstreamId: string;
   label: string;
+  scopeKind: "workspace" | "session" | "surface" | "pane" | "window" | "workstream";
   lastActivityAt: string;
   rawState: WorkstreamState["rawState"];
+  lastSignalCode: SafeFactCode;
   classification: Classification;
 };
 

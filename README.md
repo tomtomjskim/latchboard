@@ -13,17 +13,21 @@ agent command dispatch.
 Latchboard turns local JSONL work events into a read-only dashboard for work
 that may need operator attention: missing validation, missing next step, blocked
 work, and stale work. The demo fixture is expected to show 4 Attention Queue
-rows and 5 All Workstreams rows.
+rows and 5 Observed Scopes rows.
 
 In real cmux mode, neutral UI activity such as focus, selection, window, pane,
 surface, workspace, and notification events is reduced to `activity_seen`. This
 shows that the live source is current without treating UI activity alone as a
 missing next-step alert.
 
-The browser dashboard auto-refreshes every 2 seconds. Real cmux workstreams use
-stable hashed labels such as `cmux a1b2c3` and show their last safe signal. v0.1
-does not display repo names, paths, raw prompts, or task titles; those need a
-separate safe metadata source before they can appear in the UI.
+The browser dashboard embeds the latest snapshot into the initial HTML and then
+auto-refreshes every 2 seconds. Real cmux workstreams use privacy-safe dimension
+labels such as `workspace a1b2c3` or `session d4e5f6`, and show their last safe
+signal. Neutral cmux UI activity is grouped by workspace first to reduce
+window/pane noise; agent and tool activity is grouped by session first.
+
+v0.1 still does not display repo names, paths, raw prompts, or task titles.
+Those need a separate safe metadata source before they can appear in the UI.
 
 Latchboard is source-distributed for local use. npm package publishing is not
 the primary distribution path.
@@ -55,7 +59,7 @@ Open the printed loopback URL. `npm run demo` uses fixed sanitized fixture data
 from `fixtures/demo-attention-gate.jsonl`, labels the UI as not live data, and
 writes `.latchboard/state.json`, which is ignored by git.
 
-The expected demo result is 4 Attention Queue rows and 5 All Workstreams rows.
+The expected demo result is 4 Attention Queue rows and 5 Observed Scopes rows.
 
 If smoke tests fail because the Chromium browser binary is missing, install it:
 
@@ -84,7 +88,9 @@ metadata-only:
 {"type":"event","name":"window.keyed","occurred_at":"2026-07-02T05:19:42.996Z","payload":{"workspace_id":"opaque-workspace-id","window_id":"opaque-window-id"}}
 ```
 
-Top-level `signals` are not trusted in real cmux mode. Do not include raw
+Top-level `signals` are not trusted in real cmux mode. Latchboard groups neutral
+UI activity by `workspace_id` first, while agent and tool activity prefers
+`session_id`. Do not include raw
 prompts, terminal output, full paths, repo names, branch names, commands,
 tokens, secrets, or customer identifiers. See [docs/input-format.md](docs/input-format.md)
 for the safe input contract.

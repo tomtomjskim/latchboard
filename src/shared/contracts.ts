@@ -14,6 +14,7 @@ export type SafeFactCode =
   | "unknown_safe_event";
 
 export type SafeSourceEventType = "session" | "tool" | "assistant" | "system" | "unknown";
+export type ScopeKind = "workspace" | "session" | "surface" | "pane" | "window" | "workstream";
 
 export type SafeFact = {
   id: string;
@@ -76,6 +77,7 @@ export type SourceStatus = {
 export type AttentionRow = {
   workstreamId: string;
   label: string;
+  scopeKind: ScopeKind;
   lastActivityAt: string;
   lastSignalCode: SafeFactCode;
   classification: Classification;
@@ -84,6 +86,7 @@ export type AttentionRow = {
 export type WorkstreamSummary = {
   workstreamId: string;
   label: string;
+  scopeKind: ScopeKind;
   lastActivityAt: string;
   rawState: RawState;
   lastSignalCode: SafeFactCode;

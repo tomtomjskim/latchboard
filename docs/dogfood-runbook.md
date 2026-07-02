@@ -16,7 +16,7 @@ next step.
 2. Add one JSONL event when a local workstream reaches a meaningful state:
    completion claimed, validation observed, next step observed, or blocked.
 3. Run Latchboard in real mode against the local `events.jsonl` file.
-4. Review Attention Queue first, then All Workstreams.
+4. Review Attention Queue first, then Observed Scopes.
 5. For every Attention Queue row, answer the review questions below.
 6. Record only counts and short sanitized notes in the false positive or false
    negative log.
@@ -68,7 +68,7 @@ For each Attention Queue row:
 - Would the operator keep, suppress, or reclassify this signal if the same pattern
   appears again?
 
-For All Workstreams:
+For Observed Scopes:
 
 - Did any workstream look done even though validation was missing?
 - Did any workstream look complete even though the next step was missing?

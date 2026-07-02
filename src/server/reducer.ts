@@ -44,8 +44,13 @@ function rawStateFor(facts: SafeFact[]): RawState {
 }
 
 function safeCmuxLabel(id: string): string {
-  const digest = id.replace(/^ws_cmux_events_/, "");
-  return `cmux ${digest.slice(0, 6)}`;
+  const match = /^ws_cmux_events_(session|workspace|surface|pane|window)_([a-f0-9]{16})$/.exec(id);
+  if (!match) {
+    const digest = id.replace(/^ws_cmux_events_/, "");
+    return `cmux ${digest.slice(0, 6)}`;
+  }
+
+  return `${match[1]} ${match[2].slice(0, 6)}`;
 }
 
 export function reduceWorkstreams(facts: SafeFact[]): WorkstreamState[] {
