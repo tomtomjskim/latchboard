@@ -51,8 +51,11 @@ Results:
 
 ## Notes
 
-The task brief requires `unblocked_signal_seen` in `docs/input-format.md`.
-Current v0 source does not include that signal in `SafeFactCode` or the
-normalizer allowlist. The docs include the required signal for producer
-compatibility and also state that v0 currently resolves blocked work from later
-`validation_signal_seen` or `next_step_signal_seen`.
+Follow-up resolved the previous `unblocked_signal_seen` concern. Current v0
+source does not include that signal in `SafeFactCode` or the normalizer
+allowlist, so `docs/input-format.md` and the active Task 2 plan requirement now
+list only the v0-supported public signals. v0 blocked-work resolution is
+documented as deriving from later `validation_signal_seen` or
+`next_step_signal_seen`.
+
+Concerns: none after follow-up.

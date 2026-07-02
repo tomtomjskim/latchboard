@@ -40,11 +40,9 @@ Use safe signal names only:
 - `validation_signal_seen`
 - `next_step_signal_seen`
 - `blocked_signal_seen`
-- `unblocked_signal_seen`
 
 Current v0 blocked-work resolution is derived from a later
-`validation_signal_seen` or `next_step_signal_seen`. `unblocked_signal_seen` is
-listed for producer compatibility, but v0 does not require it for resolution.
+`validation_signal_seen` or `next_step_signal_seen`.
 
 The v0 normalizer also accepts implementation signals used by fixtures and
 internal state derivation, including `session_started`, `tool_started`,

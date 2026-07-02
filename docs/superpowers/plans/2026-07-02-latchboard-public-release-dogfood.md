@@ -232,7 +232,7 @@ The minimal JSONL event must be:
 
 The Accepted Identity Fields section must list `workstreamId`, `sessionId`, `threadId`, `conversationId`, and `runId`.
 
-The Accepted Signals section must list `completion_claim_seen`, `validation_signal_seen`, `next_step_signal_seen`, `blocked_signal_seen`, and `unblocked_signal_seen`.
+The Accepted Signals section must list `completion_claim_seen`, `validation_signal_seen`, `next_step_signal_seen`, and `blocked_signal_seen`.
 
 The Privacy Rules section must say not to include raw prompts, terminal output, full paths, repo names, branch names, commands, tokens, secrets, or customer identifiers.
 
