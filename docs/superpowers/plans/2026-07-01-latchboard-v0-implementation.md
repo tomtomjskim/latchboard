@@ -760,12 +760,12 @@ describe("normalizeRecords", () => {
           scenario: "missing_validation",
           time: "2026-07-01T09:00:00.000+09:00",
           signals: ["session_started"],
-          payload: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW /Users/private/acme"
+          payload: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW /example/private/acme"
         }
       }
     ], "demo");
     expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
-    expect(JSON.stringify(facts)).not.toContain("/Users/private/acme");
+    expect(JSON.stringify(facts)).not.toContain("/example/private/acme");
   });
 });
 ```

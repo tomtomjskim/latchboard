@@ -7,8 +7,12 @@ const requiredFiles = [
   ".nvmrc",
   "README.md",
   "docs/privacy.md",
+  "docs/input-format.md",
+  "docs/troubleshooting.md",
   "docs/release-checklist.md",
-  "docs/dogfood-runbook.md"
+  "docs/dogfood-runbook.md",
+  "SECURITY.md",
+  "CONTRIBUTING.md"
 ];
 
 const blockedPatterns = [
@@ -19,6 +23,11 @@ const blockedPatterns = [
   ["xoxb", "-"].join("")
 ];
 const shortKeyPrefix = ["sk", "-"].join("");
+const localHomePathPattern = /(?:\/Users\/|\/home\/|[A-Za-z]:\\Users\\)/;
+const privateOperatorAliases = [
+  ["T", "om"].join(""),
+  ["T", "O", "M"].join("")
+];
 
 function trackedFiles() {
   const output = execFileSync("git", ["ls-files", "-z"], { encoding: "buffer" });
@@ -52,6 +61,14 @@ function checkRequiredFiles(files, failures) {
   }
 }
 
+function checkTrackedSuperpowers(files, failures) {
+  for (const file of files) {
+    if (file === ".superpowers" || file.startsWith(".superpowers/")) {
+      failures.push(`Tracked .superpowers artifact: ${file}`);
+    }
+  }
+}
+
 function checkPackagePrivate(failures) {
   const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
   if (packageJson.private === true) {
@@ -61,10 +78,6 @@ function checkPackagePrivate(failures) {
 
 function checkBlockedPatterns(files, failures) {
   for (const file of files) {
-    if (file === "package-lock.json") {
-      continue;
-    }
-
     const body = readFileSync(file);
     if (!isText(body)) {
       continue;
@@ -79,6 +92,19 @@ function checkBlockedPatterns(files, failures) {
     if (includesShortKeyPrefix(text)) {
       failures.push(`Blocked pattern ${shortKeyPrefix} found in ${file}`);
     }
+    if (localHomePathPattern.test(text)) {
+      failures.push(`Local user home path found in ${file}`);
+    }
+
+    if (file !== "package-lock.json") {
+      for (const alias of privateOperatorAliases) {
+        const aliasPattern = new RegExp(`\\b${alias}\\b`);
+        if (aliasPattern.test(text)) {
+          failures.push(`Private operator alias found in ${file}`);
+          break;
+        }
+      }
+    }
   }
 }
 
@@ -87,6 +113,7 @@ function main() {
   const files = trackedFiles();
 
   checkRequiredFiles(files, failures);
+  checkTrackedSuperpowers(files, failures);
   checkPackagePrivate(failures);
   checkBlockedPatterns(files, failures);
 

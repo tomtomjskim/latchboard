@@ -9,6 +9,14 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testDir, "..");
 const preflightScript = join(repoRoot, "scripts", "release-preflight.mjs");
 const blockedAssignment = ["OPENAI_API_KEY", "=", "canary"].join("");
+const blockedPatternMessage = ["Blocked pattern OPENAI_API_KEY", "= found in package-lock.json"].join("");
+const macHomePath = ["/", "Users", "/private/acme"].join("");
+const linuxHomePath = ["/", "home", "/private/acme"].join("");
+const windowsHomePath = ["C:", "\\", "Users", "\\private\\acme"].join("");
+const privateOperatorAliases = [
+  ["T", "om"].join(""),
+  ["T", "O", "M"].join("")
+];
 
 const tempRoots: string[] = [];
 
@@ -32,8 +40,12 @@ function createReleaseReadyRepo(): string {
   writeRepoFile(cwd, ".nvmrc", "22\n");
   writeRepoFile(cwd, "README.md", "# Test repo\n");
   writeRepoFile(cwd, "docs/privacy.md", "# Privacy\n");
+  writeRepoFile(cwd, "docs/input-format.md", "# Input format\n");
+  writeRepoFile(cwd, "docs/troubleshooting.md", "# Troubleshooting\n");
   writeRepoFile(cwd, "docs/release-checklist.md", "# Release\n");
   writeRepoFile(cwd, "docs/dogfood-runbook.md", "# Dogfood\n");
+  writeRepoFile(cwd, "SECURITY.md", "# Security\n");
+  writeRepoFile(cwd, "CONTRIBUTING.md", "# Contributing\n");
   git(cwd, ["add", "."]);
 
   return cwd;
@@ -81,11 +93,11 @@ describe("release preflight", () => {
 
   it("fails when required release files are not tracked", () => {
     const cwd = createReleaseReadyRepo();
-    git(cwd, ["rm", "--cached", "docs/privacy.md"]);
+    git(cwd, ["rm", "--cached", "SECURITY.md"]);
 
     const result = runPreflight(cwd);
     expect(result.status).not.toBe(0);
-    expect(`${result.stdout}${result.stderr}`).toContain("Missing required file: docs/privacy.md");
+    expect(`${result.stdout}${result.stderr}`).toContain("Missing required file: SECURITY.md");
   });
 
   it('fails when package.json sets "private": true', () => {
@@ -111,5 +123,49 @@ describe("release preflight", () => {
     expect(output).toContain("fixtures/privacy-canary.jsonl");
     expect(output).toContain("tests/server/privacy-canary.test.ts");
     expect(output).toContain("docs/superpowers/plans/release-note.md");
+  });
+
+  it("fails when tracked .superpowers artifacts are present", () => {
+    const cwd = createReleaseReadyRepo();
+    writeRepoFile(cwd, ".superpowers/session.json", "{}\n");
+    git(cwd, ["add", ".superpowers/session.json"]);
+
+    const result = runPreflight(cwd);
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain("Tracked .superpowers artifact: .superpowers/session.json");
+  });
+
+  it.each([
+    [macHomePath],
+    [linuxHomePath],
+    [windowsHomePath]
+  ])("fails on local absolute user home paths: %s", (pathCanary) => {
+    const cwd = createReleaseReadyRepo();
+    writeRepoFile(cwd, "docs/leak.md", `path: ${pathCanary}\n`);
+    git(cwd, ["add", "docs/leak.md"]);
+
+    const result = runPreflight(cwd);
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain("Local user home path found in docs/leak.md");
+  });
+
+  it.each(privateOperatorAliases)("fails on standalone private operator alias %s", (alias) => {
+    const cwd = createReleaseReadyRepo();
+    writeRepoFile(cwd, "docs/operator.md", `Reviewed by ${alias}.\n`);
+    git(cwd, ["add", "docs/operator.md"]);
+
+    const result = runPreflight(cwd);
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain("Private operator alias found in docs/operator.md");
+  });
+
+  it("scans package-lock.json for high-confidence blocked patterns", () => {
+    const cwd = createReleaseReadyRepo();
+    writeRepoFile(cwd, "package-lock.json", JSON.stringify({ canary: blockedAssignment }, null, 2));
+    git(cwd, ["add", "package-lock.json"]);
+
+    const result = runPreflight(cwd);
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain(blockedPatternMessage);
   });
 });

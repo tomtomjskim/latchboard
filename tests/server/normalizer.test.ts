@@ -31,7 +31,7 @@ describe("normalizeRecords", () => {
             scenario: "missing_validation",
             time: "2026-07-01T09:00:00.000+09:00",
             signals: ["session_started"],
-            payload: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW /Users/private/acme"
+            payload: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW /example/private/acme"
           }
         }
       ],
@@ -39,7 +39,7 @@ describe("normalizeRecords", () => {
     );
 
     expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
-    expect(JSON.stringify(facts)).not.toContain("/Users/private/acme");
+    expect(JSON.stringify(facts)).not.toContain("/example/private/acme");
   });
 
   it("does not pass untrusted metadata strings through SafeFact fields", () => {
@@ -49,9 +49,9 @@ describe("normalizeRecords", () => {
           lineNumber: 12,
           value: {
             kind: "terminal: LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW",
-            scenario: "/Users/private/acme",
-            time: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW /Users/private/acme",
-            signals: ["prompt: /Users/private/acme"]
+            scenario: "/example/private/acme",
+            time: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW /example/private/acme",
+            signals: ["prompt: /example/private/acme"]
           }
         }
       ],
@@ -66,7 +66,7 @@ describe("normalizeRecords", () => {
       })
     ]);
     expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
-    expect(JSON.stringify(facts)).not.toContain("/Users/private/acme");
+    expect(JSON.stringify(facts)).not.toContain("/example/private/acme");
   });
 
   it("does not derive workstream identity from raw scenario values", () => {
@@ -83,7 +83,7 @@ describe("normalizeRecords", () => {
       lineNumber: 7,
       value: {
         kind: "demo",
-        scenario: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW /Users/private/acme/customer-repo",
+        scenario: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW /example/private/acme/customer-repo",
         time: "2026-07-01T09:00:00.000+09:00",
         signals: ["session_started"]
       }

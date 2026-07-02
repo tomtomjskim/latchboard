@@ -6,6 +6,7 @@ Use Node.js `>=18.12 <23` and npm:
 
 ```bash
 npm ci
+npm run build
 npm run demo
 ```
 

@@ -45,7 +45,7 @@ Create `LICENSE` with:
 ```text
 MIT License
 
-Copyright (c) 2026 Tom
+Copyright (c) 2026 Latchboard contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -421,10 +421,10 @@ Create `scripts/release-preflight.mjs` that:
 
 - runs `git ls-files`,
 - scans tracked text files,
-- ignores `package-lock.json`,
+- keeps `package-lock.json` in high-confidence secret/path scans,
 - fails if tracked files contain the private-key header marker, API key assignment markers, GitHub/Slack token prefixes, or the short secret-key prefix,
 - fails if `package.json` has `"private": true`,
-- fails if `LICENSE`, `.nvmrc`, `README.md`, `docs/privacy.md`, `docs/release-checklist.md`, and `docs/dogfood-runbook.md` are missing,
+- fails if `LICENSE`, `.nvmrc`, `README.md`, `docs/privacy.md`, `docs/input-format.md`, `docs/troubleshooting.md`, `docs/release-checklist.md`, `docs/dogfood-runbook.md`, `SECURITY.md`, or `CONTRIBUTING.md` are missing,
 - prints `Release preflight passed` on success.
 
 - [ ] **Step 2: Add npm script**
