@@ -193,11 +193,14 @@ describe("release preflight", () => {
   it("fails when tracked local artifacts are present", () => {
     const cwd = createReleaseReadyRepo();
     writeRepoFile(cwd, ".superpowers/session.json", "{}\n");
-    git(cwd, ["add", ".superpowers/session.json"]);
+    writeRepoFile(cwd, "dist/ui/index.html", "<!doctype html>\n");
+    git(cwd, ["add", ".superpowers/session.json", "dist/ui/index.html"]);
 
     const result = runPreflight(cwd);
+    const output = `${result.stdout}${result.stderr}`;
     expect(result.status).not.toBe(0);
-    expect(`${result.stdout}${result.stderr}`).toContain("Tracked local artifact: .superpowers/session.json");
+    expect(output).toContain("Tracked local artifact: .superpowers/session.json");
+    expect(output).toContain("Tracked local artifact: dist/ui/index.html");
   });
 
   it("fails when npm pack would include a local artifact", () => {

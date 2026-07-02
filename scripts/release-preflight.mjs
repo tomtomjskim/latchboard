@@ -34,6 +34,7 @@ const blockedArtifactDirectories = [
   ".serena",
   ".latchboard",
   "docs/superpowers/plans",
+  "dist",
   "node_modules",
   "test-results",
   "playwright-report"
