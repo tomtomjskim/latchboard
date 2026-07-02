@@ -265,6 +265,12 @@ button {
   text-transform: uppercase;
 }
 
+.parent-hint {
+  color: #53616d;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .row-meta {
   display: -webkit-box;
   overflow: hidden;
