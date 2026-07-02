@@ -30,3 +30,16 @@ Changed files:
 - `package.json`
 - `package-lock.json`
 - `.superpowers/sdd/2026-07-02-release-task-1-report.md`
+
+## Controller Follow-Up
+
+- Adjusted `.nvmrc` from `22` to `18`.
+- Adjusted `engines.node` from `>=22 <23` to `>=18.12 <23` in `package.json` and `package-lock.json`.
+- Updated the public release plan so its Node version requirement matches the verified local runtime.
+
+Validation after follow-up:
+
+- `node --version`: `v18.12.1`
+- `npm pkg get name version private license engines scripts`: passed and showed `engines.node` as `>=18.12 <23`.
+- `npm install --package-lock-only`: passed without engine warnings. It reported 5 dev-audit vulnerabilities, to be covered by the later `npm audit --omit=dev` release gate.
+- `npm test -- tests/scaffold.test.ts`: passed, 1 file / 2 tests.
