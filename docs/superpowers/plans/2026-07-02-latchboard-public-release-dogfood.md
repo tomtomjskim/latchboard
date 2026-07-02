@@ -339,7 +339,7 @@ git commit -m "docs: prepare public release guide"
 
 **Interfaces:**
 - Consumes: v0 attention reasons from `src/shared/contracts.ts` and v0.2 deferral decision from `docs/reviews/2026-07-01-planning-inbox-review.md`.
-- Produces: A first real-use routine for TOM to run Latchboard against actual local events without adding collectors yet.
+- Produces: A first real-use routine for the operator to run Latchboard against actual local events without adding collectors yet.
 
 - [ ] **Step 1: Add dogfood runbook**
 
