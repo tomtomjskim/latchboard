@@ -18,6 +18,7 @@ const snapshot: TodaySnapshot = {
     {
       workstreamId: "ws_attention",
       label: "Workstream 1",
+      scopeKind: "workstream",
       lastActivityAt: "2026-07-01T09:00:00.000+09:00",
       lastSignalCode: "completion_claim_seen",
       classification: {
@@ -36,6 +37,7 @@ const snapshot: TodaySnapshot = {
     {
       workstreamId: "ws_attention",
       label: "Workstream 1",
+      scopeKind: "workstream",
       lastActivityAt: "2026-07-01T09:00:00.000+09:00",
       rawState: "done_claimed",
       lastSignalCode: "completion_claim_seen",
@@ -53,6 +55,7 @@ const snapshot: TodaySnapshot = {
     {
       workstreamId: "ws_verified",
       label: "Workstream 2",
+      scopeKind: "workstream",
       lastActivityAt: "2026-07-01T09:30:00.000+09:00",
       rawState: "verified_done",
       lastSignalCode: "validation_signal_seen",
@@ -85,13 +88,14 @@ const activityOnlySnapshot: TodaySnapshot = {
   attention: [],
   workstreams: [
     {
-      workstreamId: "ws_activity",
-      label: "Workstream 1",
+      workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      label: "workspace aaaaaa",
+      scopeKind: "workspace",
       lastActivityAt: "2026-07-02T14:29:00.000+09:00",
       rawState: "running",
       lastSignalCode: "activity_seen",
       classification: {
-        workstreamId: "ws_activity",
+        workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
         attentionReason: null,
         severity: "low",
         certainty: "explicit",
@@ -120,7 +124,7 @@ describe("AppView", () => {
     expect(screen.getByText("Demo fixture")).toBeTruthy();
     expect(screen.getByText("Not live data")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Attention Queue" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "All Workstreams" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Observed Scopes" })).toBeTruthy();
     expect(screen.getByText("Daily Summary")).toBeTruthy();
     expect(screen.getByText("B Missing next step · D Missing validation · Blocked · Stale")).toBeTruthy();
     expect(screen.getAllByText("Missing validation").length).toBeGreaterThan(0);
@@ -172,14 +176,15 @@ describe("AppView", () => {
     expect(screen.getByText("Live local data")).toBeTruthy();
     expect(screen.getByText("No attention items")).toBeTruthy();
     expect(screen.getByText("1 observed")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "View Workstream 1 details" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "View workspace aaaaaa details" })).toBeTruthy();
+    expect(screen.getAllByText("workspace").length).toBeGreaterThan(0);
     expect(screen.getAllByText("activity").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Clear").length).toBeGreaterThan(0);
     expect(screen.getAllByText("No attention").length).toBeGreaterThan(0);
     expect(screen.getAllByText("No next-step prompt is required.").length).toBeGreaterThan(0);
     expect(screen.queryByText("Write the next step before continuing.")).toBeNull();
     expect(screen.queryByText("Run the planned validation and review the result.")).toBeNull();
-    expect(document.body.textContent).not.toContain("ws_activity");
+    expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
   });
 
   it("opens a sanitized detail panel for a selected workstream", () => {
@@ -216,6 +221,48 @@ describe("App", () => {
     });
   });
 
+  it("renders immediately from a bootstrap snapshot before the first network refresh", async () => {
+    vi.useFakeTimers();
+    window.__LATCHBOARD_BOOTSTRAP__ = { token: "test-token", snapshot: activityOnlySnapshot };
+    const refreshedSnapshot: TodaySnapshot = {
+      ...activityOnlySnapshot,
+      sourceStatus: {
+        ...activityOnlySnapshot.sourceStatus,
+        parsedLineCount: 13
+      }
+    };
+    const fetch = vi.fn(async () => new Response(JSON.stringify(refreshedSnapshot), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+
+    render(<App pollMs={1000} />);
+
+    expect(screen.queryByText("Loading Latchboard")).toBeNull();
+    expect(screen.getByText("Live local data")).toBeTruthy();
+    expect(screen.getByText("12")).toBeTruthy();
+    expect(fetch).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a bootstrap snapshot visible when the first refresh fails", async () => {
+    vi.useFakeTimers();
+    window.__LATCHBOARD_BOOTSTRAP__ = { token: "test-token", snapshot: activityOnlySnapshot };
+    const fetch = vi.fn(async () => {
+      throw new Error("network down");
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    render(<App pollMs={1000} />);
+
+    expect(screen.queryByText("Loading Latchboard")).toBeNull();
+    expect(screen.getByText("Live local data")).toBeTruthy();
+    expect(screen.getByText("12")).toBeTruthy();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Snapshot unavailable")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Observed Scopes" })).toBeTruthy();
+  });
+
   it("refreshes the snapshot without a page reload", async () => {
     window.__LATCHBOARD_BOOTSTRAP__ = { token: "test-token" };
     const refreshedSnapshot: TodaySnapshot = {
@@ -232,11 +279,11 @@ describe("App", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSnapshot), { status: 200 }));
     vi.stubGlobal("fetch", fetch);
 
-    render(<App pollMs={10} />);
+    render(<App pollMs={1000} />);
 
     await waitFor(() => expect(screen.getByText("12")).toBeTruthy());
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2), { timeout: 2000 });
     expect(screen.getByText("13")).toBeTruthy();
   });
 

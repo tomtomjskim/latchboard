@@ -8,6 +8,7 @@ import type {
   AttentionRow,
   Classification,
   SafeFact,
+  ScopeKind,
   SourceStatus,
   SourceType,
   TodaySnapshot,
@@ -44,6 +45,15 @@ export type SnapshotRuntime = {
   subscribe: (listener: (snapshot: TodaySnapshot) => void) => () => void;
 };
 
+function scopeKindFor(state: WorkstreamState): ScopeKind {
+  if (state.sourceType !== "cmux_events") {
+    return "workstream";
+  }
+
+  const match = /^ws_cmux_events_(workspace|session|surface|pane|window)_/.exec(state.id);
+  return match ? (match[1] as ScopeKind) : "workstream";
+}
+
 export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
   const classificationsById = new Map(input.classifications.map((item) => [item.workstreamId, item]));
 
@@ -56,6 +66,7 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
     return {
       workstreamId: state.id,
       label: state.label,
+      scopeKind: scopeKindFor(state),
       lastActivityAt: state.lastActivityAt,
       rawState: state.rawState,
       lastSignalCode: state.facts[state.facts.length - 1]?.code ?? "unknown_safe_event",
@@ -68,6 +79,7 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
     .map((row) => ({
       workstreamId: row.workstreamId,
       label: row.label,
+      scopeKind: row.scopeKind,
       lastActivityAt: row.lastActivityAt,
       lastSignalCode: row.lastSignalCode,
       classification: row.classification

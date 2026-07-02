@@ -89,7 +89,7 @@ npm run demo
 ```
 
 Open the printed loopback URL. The expected demo result is 4 Attention Queue
-rows and 5 All Workstreams rows. `npm run demo` writes `.latchboard/state.json`,
+rows and 5 Observed Scopes rows. `npm run demo` writes `.latchboard/state.json`,
 which must remain ignored by git.
 
 ## Dogfood Start

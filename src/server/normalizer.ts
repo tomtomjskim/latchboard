@@ -28,7 +28,22 @@ const workstreamIdentityFields = [
   "runId"
 ] as const;
 
-const cmuxIdentityFields = ["session_id", "surface_id", "pane_id", "workspace_id", "window_id"] as const;
+type CmuxIdentityField = "session_id" | "surface_id" | "pane_id" | "workspace_id" | "window_id";
+
+const cmuxActionIdentityFields: CmuxIdentityField[] = [
+  "session_id",
+  "workspace_id",
+  "surface_id",
+  "pane_id",
+  "window_id"
+];
+const cmuxActivityIdentityFields: CmuxIdentityField[] = [
+  "workspace_id",
+  "surface_id",
+  "pane_id",
+  "window_id",
+  "session_id"
+];
 const cmuxNeutralActivityNames = new Set([
   "notification.clear_requested",
   "notification.cleared",
@@ -135,6 +150,16 @@ function cmuxSourceEventType(name: string): SafeSourceEventType {
   return "unknown";
 }
 
+function cmuxIdentityFieldsForName(name: string | undefined): CmuxIdentityField[] {
+  if (!name) {
+    return cmuxActivityIdentityFields;
+  }
+
+  return cmuxSourceEventType(name) === "tool" || name.startsWith("agent.hook.")
+    ? cmuxActionIdentityFields
+    : cmuxActivityIdentityFields;
+}
+
 function safeFactCodesFor(value: Record<string, unknown>, sourceType: SourceType): SafeFactCode[] {
   const name = stringField(value, "name");
   if (sourceType === "cmux_events" && stringField(value, "type") === "event" && name) {
@@ -152,11 +177,12 @@ function safeFactCodesFor(value: Record<string, unknown>, sourceType: SourceType
 function workstreamIdFor(value: Record<string, unknown>, sourceType: SourceType, lineNumber: number): string {
   const payload = payloadRecord(value);
   if (sourceType === "cmux_events") {
-    for (const field of cmuxIdentityFields) {
+    const name = stringField(value, "name");
+    for (const field of cmuxIdentityFieldsForName(name)) {
       const raw = stringField(payload, field) ?? stringField(value, field);
       if (raw) {
         const digest = createHash("sha256").update(`${field}:${raw}`).digest("hex").slice(0, 16);
-        return `ws_${sourceType}_${digest}`;
+        return `ws_${sourceType}_${field.replace("_id", "")}_${digest}`;
       }
     }
   }

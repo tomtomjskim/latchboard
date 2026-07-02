@@ -10,7 +10,7 @@ test("demo server responds on loopback HTTP", async ({ page, request }) => {
 
   await expect(page.getByText("Latchboard").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Attention Queue" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "All Workstreams" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Observed Scopes" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Daily Summary" })).toBeVisible();
   await expect(page.getByText("Missing validation").first()).toBeVisible();
   await expect(page.getByText("Completion was claimed without a validation signal.").first()).toBeVisible();
@@ -22,7 +22,7 @@ test("demo server responds on loopback HTTP", async ({ page, request }) => {
   const attentionPanel = page.locator("section.attention-panel");
   const attentionRows = attentionPanel.locator(".queue-row");
   const allWorkstreamsPanel = page.locator("section.workstream-panel");
-  const allWorkstreamsList = page.getByRole("list", { name: "All workstreams" });
+  const allWorkstreamsList = page.getByRole("list", { name: "Observed scopes" });
   const dailySummary = page.getByLabel("Daily summary");
 
   await expect(attentionRows).toHaveCount(4);
@@ -45,7 +45,7 @@ test("demo server responds on loopback HTTP", async ({ page, request }) => {
   await expect(verifiedWorkstream).toContainText("verified done");
   await expect(verifiedWorkstream).toContainText("Clear");
   await verifiedWorkstream.click();
-  const workstreamDetail = page.getByLabel("Workstream detail");
+  const workstreamDetail = page.getByLabel("Scope detail");
   await expect(page.getByRole("heading", { name: "Workstream 5" })).toBeVisible();
   await expect(workstreamDetail).toContainText("No attention");
   await expect(workstreamDetail).toContainText("No next-step prompt is required.");

@@ -173,11 +173,53 @@ describe("normalizeRecords", () => {
       "2026-07-02T05:12:00.000Z"
     ]);
     expect(facts[0].workstreamId).toBe(facts[1].workstreamId);
+    expect(facts[0].workstreamId).toMatch(/^ws_cmux_events_session_[a-f0-9]{16}$/);
     expect(facts[0].sourceEventType).toBe("tool");
     expect(facts[1].sourceEventType).toBe("tool");
     expect(JSON.stringify(facts)).not.toContain("opaque-session-1");
     expect(JSON.stringify(facts)).not.toContain("/example/private/acme");
     expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
+  });
+
+  it("groups neutral cmux UI events by workspace before window-like dimensions", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 181,
+          value: {
+            type: "event",
+            name: "window.keyed",
+            occurred_at: "2026-07-02T05:19:42.996Z",
+            payload: {
+              workspace_id: "opaque-workspace-1",
+              window_id: "opaque-window-1"
+            }
+          }
+        },
+        {
+          lineNumber: 182,
+          value: {
+            type: "event",
+            name: "surface.focused",
+            occurred_at: "2026-07-02T05:19:45.000Z",
+            payload: {
+              workspace_id: "opaque-workspace-1",
+              surface_id: "opaque-surface-1"
+            }
+          }
+        }
+      ],
+      "cmux_events"
+    );
+
+    expect(facts.map((fact) => fact.workstreamId)).toEqual([
+      facts[0].workstreamId,
+      facts[0].workstreamId
+    ]);
+    expect(facts[0].workstreamId).toMatch(/^ws_cmux_events_workspace_[a-f0-9]{16}$/);
+    expect(JSON.stringify(facts)).not.toContain("opaque-workspace-1");
+    expect(JSON.stringify(facts)).not.toContain("opaque-window-1");
+    expect(JSON.stringify(facts)).not.toContain("opaque-surface-1");
   });
 
   it("treats cmux stop hooks as lifecycle activity, not completion claims", () => {
@@ -286,10 +328,10 @@ describe("normalizeRecords", () => {
 
     expect(facts).toEqual([
       expect.objectContaining({
-        id: expect.stringMatching(/^fact_ws_cmux_events_[a-f0-9]{16}_201_0$/),
+        id: expect.stringMatching(/^fact_ws_cmux_events_workspace_[a-f0-9]{16}_201_0$/),
         sourceType: "cmux_events",
         occurredAt: "2026-07-02T05:19:42.996Z",
-        workstreamId: expect.stringMatching(/^ws_cmux_events_[a-f0-9]{16}$/),
+        workstreamId: expect.stringMatching(/^ws_cmux_events_workspace_[a-f0-9]{16}$/),
         code: "activity_seen",
         sourceEventType: "system"
       })

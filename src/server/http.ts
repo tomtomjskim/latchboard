@@ -47,8 +47,13 @@ function contentType(path: string): string {
   return types[extname(path)] ?? "application/octet-stream";
 }
 
-function rootHtml(token: string): string {
-  const bootstrap = JSON.stringify({ token });
+function bootstrapScript(token: string, snapshot: TodaySnapshot): string {
+  const bootstrap = JSON.stringify({ token, snapshot }).replace(/</g, "\\u003c");
+  return `<script>window.__LATCHBOARD_BOOTSTRAP__=${bootstrap};</script>`;
+}
+
+function rootHtml(token: string, snapshot: TodaySnapshot): string {
+  const bootstrap = bootstrapScript(token, snapshot);
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -58,22 +63,22 @@ function rootHtml(token: string): string {
   </head>
   <body>
     <main id="root">Latchboard</main>
-    <script>window.__LATCHBOARD_BOOTSTRAP__=${bootstrap};</script>
+    ${bootstrap}
   </body>
 </html>`;
 }
 
-function builtRootHtml(token: string, staticRoot: string): string | null {
+function builtRootHtml(token: string, snapshot: TodaySnapshot, staticRoot: string): string | null {
   const indexPath = resolve(staticRoot, "index.html");
   if (!existsSync(indexPath)) {
     return null;
   }
 
-  const bootstrapScript = `<script>window.__LATCHBOARD_BOOTSTRAP__=${JSON.stringify({ token })};</script>`;
+  const bootstrap = bootstrapScript(token, snapshot);
   const html = readFileSync(indexPath, "utf8");
   return html.includes("</body>")
-    ? html.replace("</body>", `${bootstrapScript}</body>`)
-    : `${html}${bootstrapScript}`;
+    ? html.replace("</body>", `${bootstrap}</body>`)
+    : `${html}${bootstrap}`;
 }
 
 function staticAssetPath(pathname: string, staticRoot: string): string | null {
@@ -214,7 +219,8 @@ export async function createLatchboardServer(options: LatchboardServerOptions): 
       return;
     }
 
-    const html = builtRootHtml(options.token, staticRoot) ?? rootHtml(options.token);
+    const snapshot = options.getSnapshot();
+    const html = builtRootHtml(options.token, snapshot, staticRoot) ?? rootHtml(options.token, snapshot);
     response.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store"

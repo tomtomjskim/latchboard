@@ -35,19 +35,26 @@ A minimal tool lifecycle event is:
 
 ## Accepted Identity Fields
 
-Latchboard groups events into workstreams from the first non-empty identity field
-it finds:
+Latchboard groups events into privacy-safe observed scopes from the first
+non-empty identity field in the event-specific priority order.
+
+For agent and tool activity, Latchboard prefers session identity:
 
 - `payload.session_id`
-- `payload.surface_id`
-- `payload.pane_id`
-- `payload.workspace_id`
-- `payload.window_id`
 - top-level `session_id`
-- top-level `surface_id`
-- top-level `pane_id`
+- `payload.workspace_id`
 - top-level `workspace_id`
+- `payload.surface_id`
+- top-level `surface_id`
+- `payload.pane_id`
+- top-level `pane_id`
+- `payload.window_id`
 - top-level `window_id`
+
+For neutral UI activity such as focus, selection, window, pane, surface,
+workspace, and notification events, Latchboard prefers workspace identity before
+surface, pane, window, and finally session. This reduces window/pane noise in
+the browser view.
 
 Use opaque identifiers. Do not use repo names, paths, branch names, customer
 names, or other meaningful local labels as identifiers.

@@ -44,14 +44,14 @@ describe("reduceWorkstreams", () => {
     const workstreams = reduceWorkstreams([
       fact(
         "fact_old",
-        "ws_cmux_events_aaaaaaaa11111111",
+        "ws_cmux_events_workspace_aaaaaaaa11111111",
         "2026-07-02T05:00:00.000Z",
         "activity_seen",
         "cmux_events"
       ),
       fact(
         "fact_new",
-        "ws_cmux_events_bbbbbbbb22222222",
+        "ws_cmux_events_session_bbbbbbbb22222222",
         "2026-07-02T05:10:00.000Z",
         "tool_started",
         "cmux_events"
@@ -59,10 +59,10 @@ describe("reduceWorkstreams", () => {
     ]);
 
     expect(workstreams.map((workstream) => workstream.id)).toEqual([
-      "ws_cmux_events_bbbbbbbb22222222",
-      "ws_cmux_events_aaaaaaaa11111111"
+      "ws_cmux_events_session_bbbbbbbb22222222",
+      "ws_cmux_events_workspace_aaaaaaaa11111111"
     ]);
-    expect(workstreams.map((workstream) => workstream.label)).toEqual(["cmux bbbbbb", "cmux aaaaaa"]);
+    expect(workstreams.map((workstream) => workstream.label)).toEqual(["session bbbbbb", "workspace aaaaaa"]);
   });
 
   it("marks verified done only when validation occurs with or after completion", () => {

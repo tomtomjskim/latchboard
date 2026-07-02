@@ -1,8 +1,15 @@
 import "./styles.css";
-import { useEffect, useMemo, useState } from "react";
-import type { AttentionReason, RawState, SafeFactCode, TodaySnapshot, WorkstreamSummary } from "../shared/contracts";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  AttentionReason,
+  RawState,
+  SafeFactCode,
+  ScopeKind,
+  TodaySnapshot,
+  WorkstreamSummary
+} from "../shared/contracts";
 import { evidenceLabel, nextStepPromptLabel } from "../shared/contracts";
-import { fetchSnapshot, readBootstrapToken } from "./api";
+import { fetchSnapshot, readBootstrapSnapshot, readBootstrapToken } from "./api";
 
 const snapshotPollMs = 2000;
 
@@ -26,6 +33,15 @@ const stateLabels: Record<RawState, string> = {
   done_claimed: "done claimed",
   verified_done: "verified done",
   unknown: "unknown"
+};
+
+const scopeKindLabels: Record<ScopeKind, string> = {
+  workspace: "workspace",
+  session: "session",
+  surface: "surface",
+  pane: "pane",
+  window: "window",
+  workstream: "workstream"
 };
 
 const signalLabels: Record<SafeFactCode, string> = {
@@ -94,6 +110,19 @@ function signalLabel(code: SafeFactCode): string {
   return signalLabels[code];
 }
 
+function scopeKindLabel(kind: ScopeKind): string {
+  return scopeKindLabels[kind];
+}
+
+function scopeDetailLabel(scope: { label: string; scopeKind: ScopeKind }): string {
+  const kind = scopeKindLabel(scope.scopeKind);
+  const label = scope.label.toLowerCase().startsWith(`${kind} `)
+    ? scope.label
+    : `${kind} ${scope.label}`;
+  const prefix = scope.scopeKind === "workstream" ? scope.label : label;
+  return `View ${prefix} details`;
+}
+
 function ReasonChip({ reason }: { reason: AttentionReason | null }) {
   const label = reasonLabel(reason);
 
@@ -123,19 +152,26 @@ function selectedFromSnapshot(snapshot: TodaySnapshot, selectedId: string | null
 function DetailPanel({ workstream }: { workstream: WorkstreamSummary | null }) {
   if (!workstream) {
     return (
-      <aside className="detail-panel" aria-label="Workstream detail">
-        <p className="empty-state">No workstream selected</p>
+      <aside className="detail-panel" aria-label="Scope detail">
+        <p className="empty-state">No scope selected</p>
       </aside>
     );
   }
 
   return (
-    <aside className="detail-panel" aria-label="Workstream detail">
+    <aside className="detail-panel" aria-label="Scope detail">
       <div className="section-heading">
         <ReasonChip reason={workstream.classification.attentionReason} />
-        <h2>{workstream.label}</h2>
+        <div className="scope-title">
+          <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
+          <h2>{workstream.label}</h2>
+        </div>
       </div>
       <dl className="detail-list">
+        <div>
+          <dt>Scope</dt>
+          <dd>{scopeKindLabel(workstream.scopeKind)}</dd>
+        </div>
         <div>
           <dt>State</dt>
           <dd>{stateLabels[workstream.rawState]}</dd>
@@ -213,10 +249,13 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
                   key={row.workstreamId}
                   onClick={() => setSelectedId(row.workstreamId)}
                   aria-pressed={selected?.workstreamId === row.workstreamId}
-                  aria-label={`View ${row.label} details`}
+                  aria-label={scopeDetailLabel(row)}
                 >
                   <ReasonChip reason={row.classification.attentionReason} />
-                  <span className="row-title">{row.label}</span>
+                  <span className="row-title-block">
+                    <span className="row-title">{row.label}</span>
+                    <span className="scope-pill">{scopeKindLabel(row.scopeKind)}</span>
+                  </span>
                   <span>{reasonLabel(row.classification.attentionReason)}</span>
                   <span>{signalLabel(row.lastSignalCode)}</span>
                   <span>{formatDateTime(row.lastActivityAt)}</span>
@@ -233,7 +272,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
 
         <section className="workstream-panel" aria-labelledby="workstreams-heading">
           <div className="section-heading">
-            <h2 id="workstreams-heading">All Workstreams</h2>
+            <h2 id="workstreams-heading">Observed Scopes</h2>
             <span>{snapshot.workstreams.length} observed</span>
           </div>
           <div className="workstream-list">
@@ -244,7 +283,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
               <span>Attention</span>
               <span>Last Activity</span>
             </div>
-            <div className="workstream-items" role="list" aria-label="All workstreams">
+            <div className="workstream-items" role="list" aria-label="Observed scopes">
               {snapshot.workstreams.map((workstream) => (
                 <div key={workstream.workstreamId} role="listitem">
                   <button
@@ -252,9 +291,12 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
                     type="button"
                     onClick={() => setSelectedId(workstream.workstreamId)}
                     aria-pressed={selected?.workstreamId === workstream.workstreamId}
-                    aria-label={`View ${workstream.label} details`}
+                    aria-label={scopeDetailLabel(workstream)}
                   >
-                    <span className="row-title">{workstream.label}</span>
+                    <span className="row-title-block">
+                      <span className="row-title">{workstream.label}</span>
+                      <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
+                    </span>
                     <span>{stateLabels[workstream.rawState]}</span>
                     <span>{signalLabel(workstream.lastSignalCode)}</span>
                     <span>{attentionIds.has(workstream.workstreamId) ? reasonLabel(workstream.classification.attentionReason) : "Clear"}</span>
@@ -293,7 +335,11 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
 }
 
 export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
-  const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [state, setState] = useState<LoadState>(() => {
+    const snapshot = readBootstrapSnapshot();
+    return snapshot ? { status: "ready", snapshot } : { status: "loading" };
+  });
+  const hasReadySnapshot = useRef(state.status === "ready");
 
   useEffect(() => {
     let cancelled = false;
@@ -313,16 +359,19 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
       try {
         const snapshot = await fetchSnapshot(token);
         if (!cancelled) {
+          hasReadySnapshot.current = true;
           setState({ status: "ready", snapshot });
         }
       } catch {
-        if (!cancelled && initial) {
+        if (!cancelled && initial && !hasReadySnapshot.current) {
           setState({ status: "error", message: "Snapshot unavailable" });
         }
       }
     }
 
-    void load(true);
+    if (!hasReadySnapshot.current) {
+      void load(true);
+    }
     interval = setInterval(() => {
       void load(false);
     }, pollMs);

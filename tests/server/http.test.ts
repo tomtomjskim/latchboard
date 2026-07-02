@@ -21,6 +21,7 @@ function snapshot(): TodaySnapshot {
       {
         workstreamId: "ws_attention",
         label: "Workstream 1",
+        scopeKind: "workstream",
         lastActivityAt: "2026-07-01T09:30:00.000Z",
         lastSignalCode: "completion_claim_seen",
         classification: {
@@ -39,6 +40,7 @@ function snapshot(): TodaySnapshot {
       {
         workstreamId: "ws_attention",
         label: "Workstream 1",
+        scopeKind: "workstream",
         lastActivityAt: "2026-07-01T09:30:00.000Z",
         rawState: "done_claimed",
         lastSignalCode: "completion_claim_seen",
@@ -83,12 +85,15 @@ function updatedSnapshot(): TodaySnapshot {
   };
 }
 
-async function withServer<T>(run: (url: string) => Promise<T>, options: { staticRoot?: string } = {}): Promise<T> {
+async function withServer<T>(
+  run: (url: string) => Promise<T>,
+  options: { staticRoot?: string; getSnapshot?: () => TodaySnapshot } = {}
+): Promise<T> {
   const server = await createLatchboardServer({
     host: "127.0.0.1",
     port: 0,
     token: "test-token",
-    getSnapshot: snapshot,
+    getSnapshot: options.getSnapshot ?? snapshot,
     staticRoot: options.staticRoot
   });
 
@@ -108,9 +113,41 @@ describe("createLatchboardServer", () => {
       expect(response.status).toBe(200);
       expect(body).toContain("Latchboard");
       expect(body).toContain("test-token");
+      expect(body).toContain("sourceStatus");
+      expect(body).toContain("Workstream 1");
       expect(body).not.toContain("fixtures");
       expect(body).not.toContain("events.jsonl");
     });
+  });
+
+  it("escapes bootstrap snapshot values before embedding them in root HTML", async () => {
+    const unsafeSnapshot: TodaySnapshot = {
+      ...snapshot(),
+      attention: [
+        {
+          ...snapshot().attention[0],
+          label: "</script><script>alert(1)</script>"
+        }
+      ],
+      workstreams: [
+        {
+          ...snapshot().workstreams[0],
+          label: "</script><script>alert(1)</script>"
+        }
+      ]
+    };
+
+    await withServer(
+      async (url) => {
+        const response = await fetch(`${url}/`);
+        const body = await response.text();
+
+        expect(response.status).toBe(200);
+        expect(body).not.toContain("</script><script>alert(1)</script>");
+        expect(body).toContain("\\u003c/script>");
+      },
+      { getSnapshot: () => unsafeSnapshot }
+    );
   });
 
   it("requires bearer token for snapshot API", async () => {

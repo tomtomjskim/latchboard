@@ -4,6 +4,7 @@ declare global {
   interface Window {
     __LATCHBOARD_BOOTSTRAP__?: {
       token?: string;
+      snapshot?: TodaySnapshot;
     };
   }
 }
@@ -14,6 +15,10 @@ export function readBootstrapToken(): string {
     throw new Error("missing bootstrap token");
   }
   return token;
+}
+
+export function readBootstrapSnapshot(): TodaySnapshot | null {
+  return window.__LATCHBOARD_BOOTSTRAP__?.snapshot ?? null;
 }
 
 export async function fetchSnapshot(token: string): Promise<TodaySnapshot> {

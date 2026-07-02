@@ -69,8 +69,8 @@ are rejected.
 If the dashboard opens but has no useful rows:
 
 - Confirm the server printed a loopback URL on `127.0.0.1`.
-- In demo mode, rerun `npm run demo` and expect 4 Attention Queue rows and 5 All
-  Workstreams rows.
+- In demo mode, rerun `npm run demo` and expect 4 Attention Queue rows and 5
+  Observed Scopes rows.
 - In real mode, confirm `events.jsonl` contains JSONL records with an identity
   field and safe signals from [docs/input-format.md](input-format.md).
 - Confirm event timestamps are parseable.
