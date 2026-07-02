@@ -89,14 +89,14 @@ Run:
 
 ```bash
 npm pkg get name version private license engines scripts
-npm install --package-lock-only
+npm ci
 npm test -- tests/scaffold.test.ts
 ```
 
 Expected:
 
 - package metadata shows `version` `0.1.0`, `private` `false`, `license` `MIT`, and Node engine `>=18.12 <23`.
-- lockfile remains valid.
+- lockfile install remains valid.
 - scaffold tests pass.
 
 - [ ] **Step 5: Commit**
@@ -227,7 +227,7 @@ Create `docs/input-format.md` with sections:
 The minimal JSONL event must be:
 
 ```json
-{"time":"2026-07-02T09:10:00.000+09:00","source":"cmux","sessionId":"opaque-session-id","kind":"assistant_turn","signals":["completion_claim_seen","next_step_signal_seen"]}
+{"time":"2026-07-02T09:10:00.000+09:00","source":"cmux","sessionId":"opaque-session-id","kind":"assistant","signals":["completion_claim_seen","next_step_signal_seen"]}
 ```
 
 The Accepted Identity Fields section must list `workstreamId`, `sessionId`, `threadId`, `conversationId`, and `runId`.
@@ -372,7 +372,7 @@ The Event Source Contract section must document sanitized JSONL fields that v0 a
   "time": "2026-07-02T09:10:00.000+09:00",
   "source": "cmux",
   "sessionId": "opaque-session-id",
-  "kind": "assistant_turn",
+  "kind": "assistant",
   "signals": ["completion_claim_seen", "next_step_signal_seen"]
 }
 ```
@@ -500,7 +500,7 @@ git commit -m "chore: add release preflight gate"
 Run:
 
 ```bash
-/Users/jeongsik/.codex/plugins/cache/claude-plugins-official/superpowers/6.1.0/skills/subagent-driven-development/scripts/review-package main HEAD
+<superpowers-plugin-root>/skills/subagent-driven-development/scripts/review-package main HEAD
 ```
 
 - [ ] **Step 2: Run final review**

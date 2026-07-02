@@ -18,12 +18,20 @@ Latchboard is designed as a local-only, read-only dashboard:
 
 ## Reporting a Vulnerability
 
-Public users should open a GitHub issue with no secrets. Before submitting,
-remove tokens, paths, raw prompts, terminal output, customer identifiers, repo
-names, branch names, commands, and any other sensitive local data.
+Report vulnerabilities through GitHub Private Vulnerability Reporting when it is
+available for the repository. If private vulnerability reporting is not
+available, use a private maintainer contact before creating any public issue.
 
-If the report requires sensitive reproduction details, first open a minimal
-issue that describes the affected area without including the sensitive data.
+Public GitHub issues are appropriate only for non-sensitive hardening requests,
+documentation fixes, or questions that do not require private reproduction
+details.
+
+Before submitting any report, remove tokens, secrets, raw prompts, terminal
+output, full paths, repo names, branch names, commands, customer identifiers,
+and any other sensitive local data.
+
+Do not include sensitive reproduction details in a public issue. Use opaque
+identifiers and sanitized metadata when a public follow-up is needed.
 
 ## Sensitive Data Rules
 

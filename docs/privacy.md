@@ -35,13 +35,14 @@ contract.
 ## Quick Start
 
 ```bash
-npm install
+npm ci
 npm run build
 npm run demo
 ```
 
 Open the printed loopback URL in your browser. The server also prints the API
-token used by the UI bootstrap.
+token used by the UI bootstrap. `npm run demo` writes `.latchboard/state.json`,
+which is ignored by git.
 
 ## Real Events Mode
 
@@ -63,13 +64,15 @@ Optional runtime flags:
 Run these before release:
 
 ```bash
-npm test -- tests/server/privacy-canary.test.ts
+npm ci
 npm test
 npm run typecheck
 npm run build
 npm run test:smoke
-npm audit --omit=dev
 ```
+
+See [docs/release-checklist.md](release-checklist.md) for the full public
+release validation flow.
 
 ## Design Docs
 

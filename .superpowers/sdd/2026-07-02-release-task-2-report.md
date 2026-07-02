@@ -2,7 +2,7 @@
 
 ## Scope
 
-Updated only the assigned public documentation files:
+Updated the assigned public documentation files:
 
 - `README.md`
 - `docs/release-checklist.md`
@@ -10,6 +10,8 @@ Updated only the assigned public documentation files:
 - `docs/troubleshooting.md`
 - `SECURITY.md`
 - `CONTRIBUTING.md`
+- `docs/privacy.md`
+- `docs/superpowers/plans/2026-07-02-latchboard-public-release-dogfood.md`
 
 ## Source Of Truth Checked
 
@@ -49,6 +51,21 @@ Results:
   license, Node engine range, and demo row counts.
 - `npm test -- tests/scaffold.test.ts` passed: 1 test file, 2 tests.
 
+Task 2 review follow-up validation:
+
+```bash
+rg -n "/Users/<local-user>|assistant_turn|npm install" README.md docs/input-format.md docs/release-checklist.md docs/privacy.md SECURITY.md docs/superpowers/plans/2026-07-02-latchboard-public-release-dogfood.md
+rg -n "Private Vulnerability Reporting|Generated Artifacts|dist/|.latchboard/state.json|test-results/|playwright-report/|kind\":\"assistant\"|npm ci" SECURITY.md docs/release-checklist.md README.md docs/input-format.md docs/privacy.md
+npm test -- tests/scaffold.test.ts
+```
+
+Results:
+
+- Stale string `rg` returned no matches.
+- Required string `rg` found private vulnerability reporting, generated
+  artifact notes, `kind":"assistant"` examples, and `npm ci`.
+- `npm test -- tests/scaffold.test.ts` passed: 1 test file, 2 tests.
+
 ## Notes
 
 Follow-up resolved the previous `unblocked_signal_seen` concern. Current v0
@@ -57,5 +74,18 @@ allowlist, so `docs/input-format.md` and the active Task 2 plan requirement now
 list only the v0-supported public signals. v0 blocked-work resolution is
 documented as deriving from later `validation_signal_seen` or
 `next_step_signal_seen`.
+
+Task 2 review follow-up resolved public release doc findings:
+
+- `SECURITY.md` now routes vulnerability reports to GitHub Private
+  Vulnerability Reporting when available, or another private maintainer contact
+  before any public issue.
+- Minimal JSONL examples now use `kind: "assistant"`, matching the v0
+  normalizer's directly recognized kinds.
+- The Task 2 plan no longer exposes a local absolute `/Users/...` path.
+- `docs/release-checklist.md` documents generated artifacts from build, demo,
+  and smoke-test commands.
+- `docs/privacy.md` Quick Start and validation commands now align with the
+  README and release checklist.
 
 Concerns: none after follow-up.

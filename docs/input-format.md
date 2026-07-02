@@ -15,7 +15,7 @@ Files with other names are rejected in real mode.
 Each line must be one JSON object. A minimal safe event is:
 
 ```json
-{"time":"2026-07-02T09:10:00.000+09:00","source":"cmux","sessionId":"opaque-session-id","kind":"assistant_turn","signals":["completion_claim_seen","next_step_signal_seen"]}
+{"time":"2026-07-02T09:10:00.000+09:00","source":"cmux","sessionId":"opaque-session-id","kind":"assistant","signals":["completion_claim_seen","next_step_signal_seen"]}
 ```
 
 ## Accepted Identity Fields

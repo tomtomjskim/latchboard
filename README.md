@@ -58,7 +58,7 @@ npm run dev -- --input /path/to/events.jsonl
 Use JSONL, one JSON object per line. Keep each event metadata-only:
 
 ```json
-{"time":"2026-07-02T09:10:00.000+09:00","source":"cmux","sessionId":"opaque-session-id","kind":"assistant_turn","signals":["completion_claim_seen","next_step_signal_seen"]}
+{"time":"2026-07-02T09:10:00.000+09:00","source":"cmux","sessionId":"opaque-session-id","kind":"assistant","signals":["completion_claim_seen","next_step_signal_seen"]}
 ```
 
 Do not include raw prompts, terminal output, full paths, repo names, branch

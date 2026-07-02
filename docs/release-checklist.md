@@ -27,6 +27,15 @@ npx playwright install chromium
 npm run test:smoke
 ```
 
+## Generated Artifacts
+
+These commands create local generated files that are ignored by git:
+
+- `npm run build` creates `dist/`.
+- `npm run demo` creates `.latchboard/state.json`.
+- `npm run test:smoke` creates `test-results/` and may create
+  `playwright-report/` when a smoke test fails.
+
 ## Privacy Checks
 
 - Review [docs/privacy.md](privacy.md), [docs/input-format.md](input-format.md),
