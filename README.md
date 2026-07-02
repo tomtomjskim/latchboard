@@ -96,6 +96,10 @@ Use [docs/release-checklist.md](docs/release-checklist.md) before publishing a
 public GitHub release. The release checklist covers fresh-clone smoke testing,
 privacy checks, GitHub remote setup, dogfood start, and rollback.
 
+## Operations
+
+- [docs/dogfood-runbook.md](docs/dogfood-runbook.md)
+
 ## Roadmap
 
 Latchboard v0 is local-only, read-only, and dashboard-focused. Planning Inbox is
