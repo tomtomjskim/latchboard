@@ -4,6 +4,7 @@ import type {
   AttentionReason,
   RawState,
   SafeFactCode,
+  ScopeAlias,
   ScopeKind,
   TodaySnapshot,
   WorkstreamSummary
@@ -123,6 +124,10 @@ function scopeDetailLabel(scope: { label: string; scopeKind: ScopeKind }): strin
   return `View ${prefix} details`;
 }
 
+function scopeAliasLabel(alias: ScopeAlias): string {
+  return `${alias.kind} ${alias.label}`;
+}
+
 function ReasonChip({ reason }: { reason: AttentionReason | null }) {
   const label = reasonLabel(reason);
 
@@ -135,6 +140,10 @@ function ReasonChip({ reason }: { reason: AttentionReason | null }) {
 
 function ParentHint({ scope }: { scope: { parentLabel?: string } }) {
   return scope.parentLabel ? <span className="parent-hint">Parent {scope.parentLabel}</span> : null;
+}
+
+function ScopeAliasBadge({ alias }: { alias?: ScopeAlias }) {
+  return alias ? <span className="scope-alias">{scopeAliasLabel(alias)}</span> : null;
 }
 
 function selectedFromSnapshot(snapshot: TodaySnapshot, selectedId: string | null): WorkstreamSummary | null {
@@ -169,6 +178,7 @@ function DetailPanel({ workstream }: { workstream: WorkstreamSummary | null }) {
         <div className="scope-title">
           <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
           <h2>{workstream.label}</h2>
+          <ScopeAliasBadge alias={workstream.scopeAlias} />
         </div>
       </div>
       <dl className="detail-list">
@@ -180,6 +190,18 @@ function DetailPanel({ workstream }: { workstream: WorkstreamSummary | null }) {
           <div>
             <dt>Parent</dt>
             <dd>{workstream.parentLabel}</dd>
+          </div>
+        ) : null}
+        {workstream.scopeAlias ? (
+          <div>
+            <dt>Alias</dt>
+            <dd>{scopeAliasLabel(workstream.scopeAlias)}</dd>
+          </div>
+        ) : null}
+        {workstream.parentScopeAlias ? (
+          <div>
+            <dt>Parent Alias</dt>
+            <dd>{scopeAliasLabel(workstream.parentScopeAlias)}</dd>
           </div>
         ) : null}
         <div>
@@ -264,6 +286,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
                   <ReasonChip reason={row.classification.attentionReason} />
                   <span className="row-title-block">
                     <span className="row-title">{row.label}</span>
+                    <ScopeAliasBadge alias={row.scopeAlias} />
                     <span className="scope-pill">{scopeKindLabel(row.scopeKind)}</span>
                     <ParentHint scope={row} />
                   </span>
@@ -306,6 +329,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
                   >
                     <span className="row-title-block">
                       <span className="row-title">{workstream.label}</span>
+                      <ScopeAliasBadge alias={workstream.scopeAlias} />
                       <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
                       <ParentHint scope={workstream} />
                     </span>

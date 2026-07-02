@@ -12,6 +12,7 @@ const runtime = createSnapshotRuntime({
   sourceType,
   timezone: config.timezone,
   staleThresholdMs: config.staleThresholdMs,
+  showRepoAliases: config.showRepoAliases,
   now
 });
 await runtime.pollOnce();

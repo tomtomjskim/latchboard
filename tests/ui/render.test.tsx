@@ -109,6 +109,16 @@ const activityOnlySnapshot: TodaySnapshot = {
   dailySummary: { unresolved: 0, verifiedDone: 0, carryOver: 0 }
 };
 
+const aliasedWorkspaceSnapshot: TodaySnapshot = {
+  ...activityOnlySnapshot,
+  workstreams: [
+    {
+      ...activityOnlySnapshot.workstreams[0],
+      scopeAlias: { kind: "repo", label: "stock-auto" }
+    }
+  ]
+};
+
 const linkedScopeSnapshot: TodaySnapshot = {
   ...activityOnlySnapshot,
   workstreams: [
@@ -230,6 +240,15 @@ describe("AppView", () => {
     expect(screen.queryByText("Write the next step before continuing.")).toBeNull();
     expect(screen.queryByText("Run the planned validation and review the result.")).toBeNull();
     expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
+  });
+
+  it("renders safe cmux repo aliases without exposing workspace ids or paths", () => {
+    render(<AppView snapshot={aliasedWorkspaceSnapshot} />);
+
+    expect(screen.getAllByText("repo stock-auto").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "View workspace aaaaaa details" })).toBeTruthy();
+    expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
+    expect(document.body.textContent).not.toContain("/workspace/projects/stock-auto");
   });
 
   it("renders parent workspace hints for linked cmux session scopes", () => {

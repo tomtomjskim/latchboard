@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { userInfo } from "node:os";
 import { normalizeRecords } from "../../src/server/normalizer";
 
 describe("normalizeRecords", () => {
@@ -220,6 +221,104 @@ describe("normalizeRecords", () => {
     expect(JSON.stringify(facts)).not.toContain("opaque-workspace-1");
     expect(JSON.stringify(facts)).not.toContain("opaque-window-1");
     expect(JSON.stringify(facts)).not.toContain("opaque-surface-1");
+  });
+
+  it("does not derive cmux repo aliases unless explicitly enabled", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 184,
+          value: {
+            type: "event",
+            name: "workspace.selected",
+            occurred_at: "2026-07-02T05:19:50.000Z",
+            payload: {
+              workspace_id: "opaque-workspace-1",
+              cwd: "/workspace/projects/stock-auto"
+            }
+          }
+        }
+      ],
+      "cmux_events"
+    );
+
+    expect(facts[0].scopeAlias).toBeUndefined();
+    expect(JSON.stringify(facts)).not.toContain("/workspace/projects/stock-auto");
+    expect(JSON.stringify(facts)).not.toContain("stock-auto");
+  });
+
+  it("derives a constrained repo alias from cmux workspace cwd when explicitly enabled", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 185,
+          value: {
+            type: "event",
+            name: "workspace.selected",
+            occurred_at: "2026-07-02T05:19:50.000Z",
+            payload: {
+              workspace_id: "opaque-workspace-1",
+              cwd: "/workspace/projects/stock-auto"
+            }
+          }
+        }
+      ],
+      "cmux_events",
+      { showRepoAliases: true }
+    );
+
+    expect(facts[0].scopeAlias).toEqual({ kind: "repo", label: "stock-auto" });
+    expect(JSON.stringify(facts)).not.toContain("/workspace/projects/stock-auto");
+    expect(JSON.stringify(facts)).not.toContain("opaque-workspace-1");
+  });
+
+  it("rejects unsafe cmux workspace aliases", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 186,
+          value: {
+            type: "event",
+            name: "workspace.selected",
+            occurred_at: "2026-07-02T05:19:50.000Z",
+            payload: {
+              workspace_id: "opaque-workspace-1",
+              cwd: "/workspace/projects/LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW"
+            }
+          }
+        }
+      ],
+      "cmux_events",
+      { showRepoAliases: true }
+    );
+
+    expect(facts[0].scopeAlias).toBeUndefined();
+    expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
+  });
+
+  it("does not expose the local account name as a cmux workspace alias", () => {
+    const username = userInfo().username;
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 187,
+          value: {
+            type: "event",
+            name: "workspace.selected",
+            occurred_at: "2026-07-02T05:19:50.000Z",
+            payload: {
+              workspace_id: "opaque-workspace-1",
+              cwd: `/workspace/account/${username}`
+            }
+          }
+        }
+      ],
+      "cmux_events",
+      { showRepoAliases: true }
+    );
+
+    expect(facts[0].scopeAlias).toBeUndefined();
+    expect(JSON.stringify(facts)).not.toContain(username);
   });
 
   it("keeps related cmux workspace scope ids without leaking raw identity values", () => {

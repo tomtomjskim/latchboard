@@ -2,12 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { classifyWorkstreams } from "./classifier";
 import { readJsonlSince, type SourceCursor } from "./events-adapter";
-import { normalizeRecords } from "./normalizer";
+import { normalizeRecords, sanitizeScopeAlias } from "./normalizer";
 import { reduceWorkstreams } from "./reducer";
 import type {
   AttentionRow,
   Classification,
   SafeFact,
+  ScopeAlias,
   ScopeKind,
   SourceStatus,
   SourceType,
@@ -33,6 +34,7 @@ export type SnapshotRuntimeOptions = {
   sourceType: SourceType;
   timezone: string;
   staleThresholdMs: number;
+  showRepoAliases?: boolean;
   pollIntervalMs?: number;
   now: () => Date;
 };
@@ -70,6 +72,17 @@ function relatedWorkspaceIdFor(state: WorkstreamState, summaries: Map<string, Wo
   return undefined;
 }
 
+function scopeAliasFor(state: WorkstreamState): ScopeAlias | undefined {
+  for (let index = state.facts.length - 1; index >= 0; index -= 1) {
+    const alias = sanitizeScopeAlias(state.facts[index].scopeAlias);
+    if (alias) {
+      return alias;
+    }
+  }
+
+  return undefined;
+}
+
 export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
   const classificationsById = new Map(input.classifications.map((item) => [item.workstreamId, item]));
 
@@ -78,11 +91,13 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
     if (!classification) {
       throw new Error(`missing classification for workstream ${state.id}`);
     }
+    const scopeAlias = scopeAliasFor(state);
 
     return {
       workstreamId: state.id,
       label: state.label,
       scopeKind: scopeKindFor(state),
+      ...(scopeAlias ? { scopeAlias } : {}),
       lastActivityAt: state.lastActivityAt,
       rawState: state.rawState,
       lastSignalCode: state.facts[state.facts.length - 1]?.code ?? "unknown_safe_event",
@@ -106,6 +121,9 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
     child.parentScopeId = parent.workstreamId;
     child.parentLabel = parent.label;
     child.parentScopeKind = parent.scopeKind;
+    if (parent.scopeAlias) {
+      child.parentScopeAlias = parent.scopeAlias;
+    }
   });
 
   const attention: AttentionRow[] = workstreams
@@ -114,11 +132,13 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
       workstreamId: row.workstreamId,
       label: row.label,
       scopeKind: row.scopeKind,
+      ...(row.scopeAlias ? { scopeAlias: row.scopeAlias } : {}),
       ...(row.parentScopeId
         ? {
             parentScopeId: row.parentScopeId,
             parentLabel: row.parentLabel,
-            parentScopeKind: row.parentScopeKind
+            parentScopeKind: row.parentScopeKind,
+            ...(row.parentScopeAlias ? { parentScopeAlias: row.parentScopeAlias } : {})
           }
         : {}),
       lastActivityAt: row.lastActivityAt,
@@ -229,7 +249,11 @@ export function createSnapshotRuntime(options: SnapshotRuntimeOptions): Snapshot
     sourceStatus = mergeSourceStatus(sourceStatus, read.status);
 
     if (read.records.length > 0) {
-      facts = facts.concat(normalizeRecords(read.records, options.sourceType));
+      facts = facts.concat(
+        normalizeRecords(read.records, options.sourceType, {
+          showRepoAliases: options.showRepoAliases
+        })
+      );
     }
 
     const nextSnapshot = buildCurrentSnapshot();

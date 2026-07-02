@@ -28,8 +28,10 @@ window/pane noise; agent and tool activity is grouped by session first. When a
 session/tool event also carries a workspace identity, the dashboard shows a
 privacy-safe parent hint such as `Parent workspace a1b2c3`.
 
-v0.1 still does not display repo names, paths, raw prompts, or task titles.
-Those need a separate safe metadata source before they can appear in the UI.
+By default, v0.1 does not display repo names, paths, raw prompts, or task
+titles. Repo aliases can be enabled explicitly for local operator convenience,
+but they are derived from the final `cwd` path segment and may reveal a private
+project name.
 
 Latchboard is source-distributed for local use. npm package publishing is not
 the primary distribution path.
@@ -83,6 +85,16 @@ For cmux's default local event stream, use:
 npm run dev:cmux
 ```
 
+To show opt-in repo aliases for local triage, use:
+
+```bash
+npm run dev:cmux:aliases
+```
+
+This exposes a constrained `repo <name>` alias from the final `cwd` path
+segment of `workspace.selected` events. Keep the default command when a project
+basename may be sensitive.
+
 Real mode currently expects native cmux JSONL event envelopes. Keep each event
 metadata-only:
 
@@ -106,6 +118,8 @@ for the safe input contract.
 - `--state .latchboard/state.json`: local sidecar snapshot path.
 - `--timezone Asia/Seoul`: dashboard date/timezone.
 - `--stale-ms 7200000`: stale threshold in milliseconds.
+- `--show-repo-aliases`: opt-in display of constrained repo aliases from cmux
+  workspace `cwd` basenames. Disabled by default.
 
 ## Validation
 
