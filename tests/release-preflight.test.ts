@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,7 +35,53 @@ function createReleaseReadyRepo(): string {
   tempRoots.push(cwd);
 
   git(cwd, ["init"]);
-  writeRepoFile(cwd, "package.json", JSON.stringify({ private: false }, null, 2));
+  writeRepoFile(
+    cwd,
+    "package.json",
+    JSON.stringify(
+      {
+        name: "latchboard",
+        version: "0.1.0",
+        private: false,
+        license: "MIT",
+        engines: { node: ">=18.12 <23" },
+        files: [
+          ".nvmrc",
+          "CONTRIBUTING.md",
+          "SECURITY.md",
+          "docs/dogfood-runbook.md",
+          "docs/input-format.md",
+          "docs/privacy.md",
+          "docs/release-checklist.md",
+          "docs/troubleshooting.md",
+          "README.md"
+        ]
+      },
+      null,
+      2
+    )
+  );
+  writeRepoFile(
+    cwd,
+    "package-lock.json",
+    JSON.stringify(
+      {
+        name: "latchboard",
+        version: "0.1.0",
+        lockfileVersion: 2,
+        requires: true,
+        packages: {
+          "": {
+            name: "latchboard",
+            version: "0.1.0",
+            license: "MIT"
+          }
+        }
+      },
+      null,
+      2
+    )
+  );
   writeRepoFile(cwd, "LICENSE", "MIT\n");
   writeRepoFile(cwd, ".nvmrc", "22\n");
   writeRepoFile(cwd, "README.md", "# Test repo\n");
@@ -102,12 +148,31 @@ describe("release preflight", () => {
 
   it('fails when package.json sets "private": true', () => {
     const cwd = createReleaseReadyRepo();
-    writeRepoFile(cwd, "package.json", JSON.stringify({ private: true }, null, 2));
+    const packageJson = JSON.parse(readFileSync(join(cwd, "package.json"), "utf8"));
+    packageJson.private = true;
+    writeRepoFile(cwd, "package.json", JSON.stringify(packageJson, null, 2));
     git(cwd, ["add", "package.json"]);
 
     const result = runPreflight(cwd);
     expect(result.status).not.toBe(0);
-    expect(`${result.stdout}${result.stderr}`).toContain('package.json must not set "private": true');
+    expect(`${result.stdout}${result.stderr}`).toContain('package.json must set "private": false');
+  });
+
+  it("fails when required package metadata is missing", () => {
+    const cwd = createReleaseReadyRepo();
+    const packageJson = JSON.parse(readFileSync(join(cwd, "package.json"), "utf8"));
+    packageJson.license = "UNLICENSED";
+    packageJson.engines.node = ">=20";
+    delete packageJson.files;
+    writeRepoFile(cwd, "package.json", JSON.stringify(packageJson, null, 2));
+    git(cwd, ["add", "package.json"]);
+
+    const result = runPreflight(cwd);
+    const output = `${result.stdout}${result.stderr}`;
+    expect(result.status).not.toBe(0);
+    expect(output).toContain('package.json must set "license": "MIT"');
+    expect(output).toContain('package.json must set "engines.node": ">=18.12 <23"');
+    expect(output).toContain("package.json must define a package files allowlist");
   });
 
   it("scans synthetic canary paths instead of whitelisting them", () => {
@@ -125,14 +190,29 @@ describe("release preflight", () => {
     expect(output).toContain("docs/superpowers/plans/release-note.md");
   });
 
-  it("fails when tracked .superpowers artifacts are present", () => {
+  it("fails when tracked local artifacts are present", () => {
     const cwd = createReleaseReadyRepo();
     writeRepoFile(cwd, ".superpowers/session.json", "{}\n");
     git(cwd, ["add", ".superpowers/session.json"]);
 
     const result = runPreflight(cwd);
     expect(result.status).not.toBe(0);
-    expect(`${result.stdout}${result.stderr}`).toContain("Tracked .superpowers artifact: .superpowers/session.json");
+    expect(`${result.stdout}${result.stderr}`).toContain("Tracked local artifact: .superpowers/session.json");
+  });
+
+  it("fails when npm pack would include a local artifact", () => {
+    const cwd = createReleaseReadyRepo();
+    const packageJson = JSON.parse(readFileSync(join(cwd, "package.json"), "utf8"));
+    packageJson.files.push(".serena/");
+    writeRepoFile(cwd, "package.json", JSON.stringify(packageJson, null, 2));
+    writeRepoFile(cwd, ".serena/project.yml", "name: private-tool-state\n");
+    git(cwd, ["add", "package.json"]);
+
+    const result = runPreflight(cwd);
+    const output = `${result.stdout}${result.stderr}`;
+    expect(result.status).not.toBe(0);
+    expect(output).toContain("Packaged local artifact: .serena/project.yml");
+    expect(output).toContain("Packaged untracked file: .serena/project.yml");
   });
 
   it.each([

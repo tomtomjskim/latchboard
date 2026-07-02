@@ -7,6 +7,24 @@
   "engines": {
     "node": ">=18.12 <23"
   },
+  "files": [
+    ".nvmrc",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "docs/dogfood-runbook.md",
+    "docs/input-format.md",
+    "docs/privacy.md",
+    "docs/release-checklist.md",
+    "docs/superpowers/specs/",
+    "docs/troubleshooting.md",
+    "index.html",
+    "playwright.config.cjs",
+    "scripts/",
+    "src/",
+    "tests/",
+    "tsconfig.json",
+    "vite.config.ts"
+  ],
   "scripts": {
     "demo": "tsx src/server/main.ts --mode demo",
     "dev": "tsx src/server/main.ts",

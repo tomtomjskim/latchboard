@@ -115,7 +115,6 @@ future v0.2 work and is not implemented in v0.
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [docs/superpowers/specs/2026-07-01-latchboard-v0-design.md](docs/superpowers/specs/2026-07-01-latchboard-v0-design.md)
 - [docs/superpowers/specs/2026-07-01-latchboard-planning-inbox-design.md](docs/superpowers/specs/2026-07-01-latchboard-planning-inbox-design.md)
-- [docs/superpowers/plans/2026-07-01-latchboard-v0-implementation.md](docs/superpowers/plans/2026-07-01-latchboard-v0-implementation.md)
 
 ## License
 

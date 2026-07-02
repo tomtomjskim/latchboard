@@ -1,4 +1,5 @@
 .superpowers/
+.serena/
 node_modules/
 dist/
 .latchboard/

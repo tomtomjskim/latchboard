@@ -6,6 +6,7 @@ const requiredFiles = [
   "LICENSE",
   ".nvmrc",
   "README.md",
+  "package-lock.json",
   "docs/privacy.md",
   "docs/input-format.md",
   "docs/troubleshooting.md",
@@ -28,6 +29,7 @@ const privateOperatorAliases = [
   ["T", "om"].join(""),
   ["T", "O", "M"].join("")
 ];
+const blockedArtifactDirectories = [".superpowers", ".serena", ".latchboard", "node_modules", "test-results", "playwright-report"];
 
 function trackedFiles() {
   const output = execFileSync("git", ["ls-files", "-z"], { encoding: "buffer" });
@@ -61,18 +63,34 @@ function checkRequiredFiles(files, failures) {
   }
 }
 
-function checkTrackedSuperpowers(files, failures) {
+function isInDirectory(file, directory) {
+  return file === directory || file.startsWith(`${directory}/`);
+}
+
+function checkTrackedArtifacts(files, failures) {
   for (const file of files) {
-    if (file === ".superpowers" || file.startsWith(".superpowers/")) {
-      failures.push(`Tracked .superpowers artifact: ${file}`);
+    for (const directory of blockedArtifactDirectories) {
+      if (isInDirectory(file, directory)) {
+        failures.push(`Tracked local artifact: ${file}`);
+        break;
+      }
     }
   }
 }
 
-function checkPackagePrivate(failures) {
+function checkPackageMetadata(failures) {
   const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
-  if (packageJson.private === true) {
-    failures.push('package.json must not set "private": true');
+  if (packageJson.private !== false) {
+    failures.push('package.json must set "private": false');
+  }
+  if (packageJson.license !== "MIT") {
+    failures.push('package.json must set "license": "MIT"');
+  }
+  if (packageJson.engines?.node !== ">=18.12 <23") {
+    failures.push('package.json must set "engines.node": ">=18.12 <23"');
+  }
+  if (!Array.isArray(packageJson.files) || packageJson.files.length === 0) {
+    failures.push("package.json must define a package files allowlist");
   }
 }
 
@@ -108,14 +126,44 @@ function checkBlockedPatterns(files, failures) {
   }
 }
 
+function packagedFiles(failures) {
+  try {
+    const output = execFileSync("npm", ["pack", "--dry-run", "--json"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    const packages = JSON.parse(output);
+    return packages.flatMap((entry) => entry.files.map((file) => file.path));
+  } catch (error) {
+    failures.push(`npm pack dry-run failed: ${error.message}`);
+    return [];
+  }
+}
+
+function checkPackagedFiles(files, failures) {
+  const tracked = new Set(files);
+  for (const file of packagedFiles(failures)) {
+    for (const directory of blockedArtifactDirectories) {
+      if (isInDirectory(file, directory)) {
+        failures.push(`Packaged local artifact: ${file}`);
+        break;
+      }
+    }
+    if (!tracked.has(file)) {
+      failures.push(`Packaged untracked file: ${file}`);
+    }
+  }
+}
+
 function main() {
   const failures = [];
   const files = trackedFiles();
 
   checkRequiredFiles(files, failures);
-  checkTrackedSuperpowers(files, failures);
-  checkPackagePrivate(failures);
+  checkTrackedArtifacts(files, failures);
+  checkPackageMetadata(failures);
   checkBlockedPatterns(files, failures);
+  checkPackagedFiles(files, failures);
 
   if (failures.length > 0) {
     console.error("Release preflight failed:");

@@ -46,6 +46,13 @@ You can also request an available port:
 npm run demo -- --port 0
 ```
 
+Smoke tests also default to `8787`. If that port is already in use during
+`npm run test:smoke`, choose a fixed alternate port:
+
+```bash
+LATCHBOARD_SMOKE_PORT=8788 npm run test:smoke
+```
+
 ## Real Mode Input Error
 
 Real mode needs an explicit input file named `events.jsonl`:

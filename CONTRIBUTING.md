@@ -33,9 +33,10 @@ npx playwright install chromium
 
 ## Privacy Boundary
 
-Latchboard documentation, tests, fixtures, screenshots, and reports must stay
-metadata-only. Do not include raw prompts, terminal output, full paths, repo
-names, branch names, commands, tokens, secrets, or customer identifiers.
+Latchboard event records, screenshots, logs, reports, issues, and release notes
+must stay metadata-only. Do not include raw prompts, private terminal output,
+full paths, repo names, branch names, private command history, tokens, secrets,
+or customer identifiers.
 
 Real Events examples must use a local file named `events.jsonl` and the safe
 format in [docs/input-format.md](docs/input-format.md).

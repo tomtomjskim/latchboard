@@ -3,9 +3,10 @@
 ## Preflight
 
 - Confirm `package.json` declares Node.js `>=18.12 <23` and license `MIT`.
+- Confirm `package.json` has a package `files` allowlist.
 - Confirm the checkout is on the intended release branch.
-- Confirm `.latchboard/`, `dist/`, `test-results/`, and `playwright-report/`
-  are not staged for release.
+- Confirm `.serena/`, `.latchboard/`, `dist/`, `test-results/`, and
+  `playwright-report/` are not staged or packaged for release.
 - Confirm Planning Inbox is documented as future v0.2 work, not current v0.
 
 ## Validation Commands
@@ -26,6 +27,12 @@ If smoke tests cannot find Chromium, install the browser binary and rerun smoke:
 ```bash
 npx playwright install chromium
 npm run test:smoke
+```
+
+If the smoke port is already in use, rerun smoke on a fixed alternate port:
+
+```bash
+LATCHBOARD_SMOKE_PORT=8788 npm run test:smoke
 ```
 
 ## Generated Artifacts
