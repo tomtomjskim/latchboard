@@ -87,5 +87,8 @@ Task 2 review follow-up resolved public release doc findings:
   and smoke-test commands.
 - `docs/privacy.md` Quick Start and validation commands now align with the
   README and release checklist.
+- The Task 2 plan now requires private vulnerability reporting or private
+  maintainer contact for vulnerability reports, with public issues limited to
+  non-sensitive hardening, documentation, and questions.
 
 Concerns: none after follow-up.

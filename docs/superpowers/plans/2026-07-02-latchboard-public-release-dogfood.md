@@ -280,7 +280,7 @@ Create `SECURITY.md` with sections:
 ## Sensitive Data Rules
 ```
 
-The Reporting a Vulnerability section must instruct public users to open a GitHub issue with no secrets and to remove tokens, paths, raw prompts, terminal output, and customer identifiers from reports.
+The Reporting a Vulnerability section must instruct public users to use GitHub Private Vulnerability Reporting or a private maintainer contact for vulnerabilities. Public issues are only for non-sensitive hardening, documentation, and question reports. All reports must remove tokens, paths, raw prompts, terminal output, and customer identifiers.
 
 - [ ] **Step 6: Add contribution guide**
 
