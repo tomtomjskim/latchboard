@@ -74,7 +74,12 @@ describe("buildSnapshot", () => {
     expect(snapshot.attention[0]).toMatchObject({
       workstreamId: "ws_attention",
       label: "Workstream 2",
+      lastSignalCode: "completion_claim_seen",
       classification: { attentionReason: "missing_validation" }
+    });
+    expect(snapshot.workstreams[0]).toMatchObject({
+      workstreamId: "ws_done",
+      lastSignalCode: "completion_claim_seen"
     });
     expect(JSON.stringify(snapshot)).not.toContain("facts");
     expect(JSON.stringify(snapshot)).not.toContain("fact_attention_1");

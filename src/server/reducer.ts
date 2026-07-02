@@ -43,6 +43,11 @@ function rawStateFor(facts: SafeFact[]): RawState {
   return "running";
 }
 
+function safeCmuxLabel(id: string): string {
+  const digest = id.replace(/^ws_cmux_events_/, "");
+  return `cmux ${digest.slice(0, 6)}`;
+}
+
 export function reduceWorkstreams(facts: SafeFact[]): WorkstreamState[] {
   const grouped = new Map<string, SafeFact[]>();
 
@@ -73,11 +78,17 @@ export function reduceWorkstreams(facts: SafeFact[]): WorkstreamState[] {
       };
     })
     .sort((left, right) => {
-      const timeDelta = Date.parse(left.createdAt) - Date.parse(right.createdAt);
+      const hasCmux = left.sourceType === "cmux_events" || right.sourceType === "cmux_events";
+      const timeDelta = hasCmux
+        ? Date.parse(right.lastActivityAt) - Date.parse(left.lastActivityAt)
+        : Date.parse(left.createdAt) - Date.parse(right.createdAt);
       return timeDelta === 0 ? left.id.localeCompare(right.id) : timeDelta;
     })
     .map((workstream, index) => ({
       ...workstream,
-      label: `Workstream ${index + 1}`
+      label:
+        workstream.sourceType === "cmux_events"
+          ? safeCmuxLabel(workstream.id)
+          : `Workstream ${index + 1}`
     }));
 }
