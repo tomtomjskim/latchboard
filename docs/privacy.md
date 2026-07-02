@@ -78,4 +78,3 @@ release validation flow.
 
 - `docs/superpowers/specs/2026-07-01-latchboard-v0-design.md`
 - `docs/superpowers/specs/2026-07-01-latchboard-planning-inbox-design.md`
-- `docs/superpowers/plans/2026-07-01-latchboard-v0-implementation.md`

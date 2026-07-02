@@ -29,7 +29,15 @@ const privateOperatorAliases = [
   ["T", "om"].join(""),
   ["T", "O", "M"].join("")
 ];
-const blockedArtifactDirectories = [".superpowers", ".serena", ".latchboard", "node_modules", "test-results", "playwright-report"];
+const blockedArtifactDirectories = [
+  ".superpowers",
+  ".serena",
+  ".latchboard",
+  "docs/superpowers/plans",
+  "node_modules",
+  "test-results",
+  "playwright-report"
+];
 
 function trackedFiles() {
   const output = execFileSync("git", ["ls-files", "-z"], { encoding: "buffer" });

@@ -5,8 +5,9 @@
 - Confirm `package.json` declares Node.js `>=18.12 <23` and license `MIT`.
 - Confirm `package.json` has a package `files` allowlist.
 - Confirm the checkout is on the intended release branch.
-- Confirm `.serena/`, `.latchboard/`, `dist/`, `test-results/`, and
-  `playwright-report/` are not staged or packaged for release.
+- Confirm `.serena/`, `.latchboard/`, `docs/superpowers/plans/`, `dist/`,
+  `test-results/`, and `playwright-report/` are not staged or packaged for
+  release.
 - Confirm Planning Inbox is documented as future v0.2 work, not current v0.
 
 ## Validation Commands
