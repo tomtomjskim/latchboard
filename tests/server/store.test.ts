@@ -30,10 +30,11 @@ function classification(workstreamId: string, attentionReason: Classification["a
 }
 
 function workstream(id: string, rawState: WorkstreamState["rawState"], facts: SafeFact[]): WorkstreamState {
+  const cmuxLabel = /^ws_cmux_events_(session|workspace|surface|pane|window)_([a-f0-9]{16})$/.exec(id);
   return {
     id,
-    sourceType: "demo",
-    label: id === "ws_done" ? "Workstream 1" : "Workstream 2",
+    sourceType: facts[0]?.sourceType ?? "demo",
+    label: cmuxLabel ? `${cmuxLabel[1]} ${cmuxLabel[2].slice(0, 6)}` : id === "ws_done" ? "Workstream 1" : "Workstream 2",
     createdAt: facts[0]?.occurredAt ?? "2026-07-01T09:00:00.000Z",
     updatedAt: facts[facts.length - 1]?.occurredAt ?? "2026-07-01T09:00:00.000Z",
     lastActivityAt: facts[facts.length - 1]?.occurredAt ?? "2026-07-01T09:00:00.000Z",
@@ -83,6 +84,49 @@ describe("buildSnapshot", () => {
     });
     expect(JSON.stringify(snapshot)).not.toContain("facts");
     expect(JSON.stringify(snapshot)).not.toContain("fact_attention_1");
+  });
+
+  it("links a cmux session summary to its related workspace summary", () => {
+    const workspaceFact: SafeFact = {
+      id: "fact_workspace",
+      sourceType: "cmux_events",
+      occurredAt: "2026-07-02T05:00:00.000Z",
+      workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      code: "activity_seen",
+      sourceEventType: "system"
+    };
+    const sessionFact: SafeFact = {
+      id: "fact_session",
+      sourceType: "cmux_events",
+      occurredAt: "2026-07-02T05:05:00.000Z",
+      workstreamId: "ws_cmux_events_session_bbbbbbbb22222222",
+      relatedScopeIds: ["ws_cmux_events_workspace_aaaaaaaa11111111"],
+      code: "tool_started",
+      sourceEventType: "tool"
+    };
+    const snapshot = buildSnapshot({
+      mode: "real",
+      date: "2026-07-02",
+      timezone: "Asia/Seoul",
+      generatedAt: "2026-07-02T05:10:00.000Z",
+      sourceStatus,
+      workstreams: [
+        workstream("ws_cmux_events_workspace_aaaaaaaa11111111", "running", [workspaceFact]),
+        workstream("ws_cmux_events_session_bbbbbbbb22222222", "running", [sessionFact])
+      ],
+      classifications: [
+        classification("ws_cmux_events_workspace_aaaaaaaa11111111", null),
+        classification("ws_cmux_events_session_bbbbbbbb22222222", null)
+      ]
+    });
+
+    const session = snapshot.workstreams.find((row) => row.scopeKind === "session");
+    expect(session).toMatchObject({
+      parentScopeId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      parentLabel: "workspace aaaaaa",
+      parentScopeKind: "workspace"
+    });
+    expect(JSON.stringify(snapshot)).not.toContain("opaque-workspace");
   });
 });
 

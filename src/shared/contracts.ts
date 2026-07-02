@@ -79,6 +79,9 @@ export type AttentionRow = {
   workstreamId: string;
   label: string;
   scopeKind: ScopeKind;
+  parentScopeId?: string;
+  parentLabel?: string;
+  parentScopeKind?: ScopeKind;
   lastActivityAt: string;
   lastSignalCode: SafeFactCode;
   classification: Classification;
@@ -88,6 +91,9 @@ export type WorkstreamSummary = {
   workstreamId: string;
   label: string;
   scopeKind: ScopeKind;
+  parentScopeId?: string;
+  parentLabel?: string;
+  parentScopeKind?: ScopeKind;
   lastActivityAt: string;
   rawState: RawState;
   lastSignalCode: SafeFactCode;

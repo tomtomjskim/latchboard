@@ -54,6 +54,22 @@ function scopeKindFor(state: WorkstreamState): ScopeKind {
   return match ? (match[1] as ScopeKind) : "workstream";
 }
 
+function relatedWorkspaceIdFor(state: WorkstreamState, summaries: Map<string, WorkstreamSummary>): string | undefined {
+  if (state.sourceType !== "cmux_events" || scopeKindFor(state) === "workspace") {
+    return undefined;
+  }
+
+  for (const fact of state.facts) {
+    for (const relatedId of fact.relatedScopeIds ?? []) {
+      if (summaries.get(relatedId)?.scopeKind === "workspace") {
+        return relatedId;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
   const classificationsById = new Map(input.classifications.map((item) => [item.workstreamId, item]));
 
@@ -73,6 +89,24 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
       classification
     };
   });
+  const workstreamsById = new Map(workstreams.map((workstream) => [workstream.workstreamId, workstream]));
+
+  input.workstreams.forEach((state) => {
+    const child = workstreamsById.get(state.id);
+    if (!child) {
+      return;
+    }
+
+    const parentId = relatedWorkspaceIdFor(state, workstreamsById);
+    const parent = parentId ? workstreamsById.get(parentId) : undefined;
+    if (!parent) {
+      return;
+    }
+
+    child.parentScopeId = parent.workstreamId;
+    child.parentLabel = parent.label;
+    child.parentScopeKind = parent.scopeKind;
+  });
 
   const attention: AttentionRow[] = workstreams
     .filter((row) => row.classification.attentionReason !== null)
@@ -80,6 +114,13 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
       workstreamId: row.workstreamId,
       label: row.label,
       scopeKind: row.scopeKind,
+      ...(row.parentScopeId
+        ? {
+            parentScopeId: row.parentScopeId,
+            parentLabel: row.parentLabel,
+            parentScopeKind: row.parentScopeKind
+          }
+        : {}),
       lastActivityAt: row.lastActivityAt,
       lastSignalCode: row.lastSignalCode,
       classification: row.classification
