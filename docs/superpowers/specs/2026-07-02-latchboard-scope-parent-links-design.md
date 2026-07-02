@@ -22,11 +22,11 @@ identity values cross the normalizer boundary.
 
 The snapshot builder derives a parent workspace for each non-workspace cmux
 scope when a related workspace scope exists in today's snapshot. The public
-snapshot exposes only:
+snapshot exposes only generated metadata:
 
-- `parentScopeId`
-- `parentLabel`
-- `parentScopeKind`
+- `parentScopeId`: generated safe scope id.
+- `parentLabel`: generated safe label such as `workspace e5cc47`.
+- `parentScopeKind`: safe enum value such as `workspace`.
 
 The UI renders this as a `Parent` row in Scope Detail and a compact parent hint
 under the scope label in Observed Scopes and Attention Queue.
