@@ -20,15 +20,6 @@ const blockedPatterns = [
 ];
 const shortKeyPrefix = ["sk", "-"].join("");
 
-const allowedSyntheticCanaryPaths = new Set([
-  "fixtures/privacy-canary.jsonl",
-  "tests/server/privacy-canary.test.ts"
-]);
-
-function isAllowedExamplePath(path) {
-  return allowedSyntheticCanaryPaths.has(path) || path.startsWith("docs/superpowers/plans/");
-}
-
 function trackedFiles() {
   const output = execFileSync("git", ["ls-files", "-z"], { encoding: "buffer" });
   return output
@@ -70,7 +61,7 @@ function checkPackagePrivate(failures) {
 
 function checkBlockedPatterns(files, failures) {
   for (const file of files) {
-    if (file === "package-lock.json" || isAllowedExamplePath(file)) {
+    if (file === "package-lock.json") {
       continue;
     }
 

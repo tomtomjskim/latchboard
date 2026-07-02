@@ -17,11 +17,12 @@ import { AppView } from "../../src/ui/App";
 const canaryStrings = [
   "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW",
   "raw prompt terminal output",
-  "/Users/private/acme",
+  "example-private-path",
   "repo-name",
   "branch-name",
   "command-text",
-  "sk-test-123456"
+  "synthetic-secret-canary",
+  "token-prefix-canary"
 ];
 
 function expectNoCanary(surface: string, body: string): void {

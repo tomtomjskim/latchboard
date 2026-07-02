@@ -1,6 +1,6 @@
 # Latchboard v0 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUBSKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build Latchboard v0 as a local, read-only AI work completion gate that turns today's cmux `events.jsonl` into an attention queue for missing validation, missing next step, blocked work, and stale work.
 
@@ -476,7 +476,7 @@ Create `fixtures/demo-attention-gate.jsonl` with sanitized demo events:
 Create `fixtures/privacy-canary.jsonl`:
 
 ```jsonl
-{"kind":"demo","scenario":"missing_validation","time":"2026-07-01T09:00:00.000+09:00","signals":["session_started","completion_claim_seen"],"payload":"LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW raw prompt terminal output /Users/private/acme repo-name branch-name command-text sk-test-123456"}
+{"kind":"demo","scenario":"missing_validation","time":"2026-07-01T09:00:00.000+09:00","signals":["session_started","completion_claim_seen"],"payload":"LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW raw prompt terminal output example-private-path repo-name branch-name command-text synthetic-secret-canary token-prefix-canary"}
 ```
 
 Create `fixtures/malformed-partial.jsonl`:

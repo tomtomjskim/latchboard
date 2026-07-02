@@ -71,11 +71,45 @@ describe("release preflight", () => {
 
   it("allows ordinary words that contain the short key prefix as a substring", () => {
     const cwd = createReleaseReadyRepo();
-    writeRepoFile(cwd, "docs/task-note.md", "release task-6 notes\n");
-    git(cwd, ["add", "docs/task-note.md"]);
+    writeRepoFile(cwd, "docs/release-note.md", ["release ta", "sk", "-6 notes\n"].join(""));
+    git(cwd, ["add", "docs/release-note.md"]);
 
     const result = runPreflight(cwd);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("Release preflight passed");
+  });
+
+  it("fails when required release files are not tracked", () => {
+    const cwd = createReleaseReadyRepo();
+    git(cwd, ["rm", "--cached", "docs/privacy.md"]);
+
+    const result = runPreflight(cwd);
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain("Missing required file: docs/privacy.md");
+  });
+
+  it('fails when package.json sets "private": true', () => {
+    const cwd = createReleaseReadyRepo();
+    writeRepoFile(cwd, "package.json", JSON.stringify({ private: true }, null, 2));
+    git(cwd, ["add", "package.json"]);
+
+    const result = runPreflight(cwd);
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain('package.json must not set "private": true');
+  });
+
+  it("scans synthetic canary paths instead of whitelisting them", () => {
+    const cwd = createReleaseReadyRepo();
+    writeRepoFile(cwd, "fixtures/privacy-canary.jsonl", blockedAssignment);
+    writeRepoFile(cwd, "tests/server/privacy-canary.test.ts", "const canary = " + JSON.stringify(blockedAssignment) + ";\n");
+    writeRepoFile(cwd, "docs/superpowers/plans/release-note.md", blockedAssignment);
+    git(cwd, ["add", "."]);
+
+    const result = runPreflight(cwd);
+    const output = `${result.stdout}${result.stderr}`;
+    expect(result.status).not.toBe(0);
+    expect(output).toContain("fixtures/privacy-canary.jsonl");
+    expect(output).toContain("tests/server/privacy-canary.test.ts");
+    expect(output).toContain("docs/superpowers/plans/release-note.md");
   });
 });

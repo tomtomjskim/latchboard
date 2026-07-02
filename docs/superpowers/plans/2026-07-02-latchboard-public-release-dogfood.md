@@ -1,6 +1,6 @@
 # Latchboard Public Release and Dogfood Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUBSKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Prepare Latchboard for a public GitHub release and first real dogfood run without weakening its local-only privacy model.
 
@@ -422,7 +422,7 @@ Create `scripts/release-preflight.mjs` that:
 - runs `git ls-files`,
 - scans tracked text files,
 - ignores `package-lock.json`,
-- fails if tracked files contain `BEGIN PRIVATE KEY`, `OPENAI_API_KEY=`, `ANTHROPIC_API_KEY=`, `ghp_`, `xoxb-`, or `sk-`,
+- fails if tracked files contain the private-key header marker, API key assignment markers, GitHub/Slack token prefixes, or the short secret-key prefix,
 - fails if `package.json` has `"private": true`,
 - fails if `LICENSE`, `.nvmrc`, `README.md`, `docs/privacy.md`, `docs/release-checklist.md`, and `docs/dogfood-runbook.md` are missing,
 - prints `Release preflight passed` on success.
@@ -450,7 +450,7 @@ Add `npm run release:preflight` to `docs/release-checklist.md` validation comman
 Run:
 
 ```bash
-node -e "const fs=require('fs'); fs.writeFileSync('/tmp/latchboard-preflight-canary.txt','OPENAI_API_KEY=canary')"
+node -e "const fs=require('fs'); fs.writeFileSync('/tmp/latchboard-preflight-canary.txt',['OPENAI_API_KEY','=','canary'].join(''))"
 npm run release:preflight
 ```
 
@@ -458,7 +458,7 @@ Expected:
 
 - The script still passes because `/tmp/latchboard-preflight-canary.txt` is not tracked.
 
-Then temporarily append `OPENAI_API_KEY=canary` to a tracked scratch file, run `npm run release:preflight`, confirm it fails, restore the file, and run it again to confirm it passes.
+Then temporarily append an API key assignment canary, built from split marker text, to a tracked scratch file, run `npm run release:preflight`, confirm it fails, restore the file, and run it again to confirm it passes.
 
 - [ ] **Step 5: Full validation**
 
