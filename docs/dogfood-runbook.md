@@ -3,11 +3,11 @@
 ## Objective
 
 Run Latchboard against real local, sanitized events every working day to check
-whether v0 attention reasons match TOM's actual operating needs.
+whether v0 attention reasons match the operator's actual needs.
 
 This is an operations routine, not a roadmap. The goal is to learn whether the
 current read-only dashboard reliably highlights work that needs attention,
-especially the B/D failures TOM cares about most: missing validation and missing
+especially the two highest-value failure classes: missing validation and missing
 next step.
 
 ## Daily Routine
@@ -45,10 +45,12 @@ Keep event records metadata-only:
 
 Use these v0 signals for dogfood records:
 
+- `tool_finished`
 - `completion_claim_seen`
 - `validation_signal_seen`
 - `next_step_signal_seen`
 - `blocked_signal_seen`
+- `idle_signal_seen`
 
 Do not include raw prompts, terminal output, full paths, repo names, branch
 names, commands, tokens, secrets, customer identifiers, or private logs in event
@@ -61,9 +63,9 @@ For each Attention Queue row:
 - Is this row pointing at a real attention need?
 - Which reason did it show: missing validation, missing next step, blocked, or
   stale?
-- Did the row appear soon enough to change TOM's next action?
+- Did the row appear soon enough to change the operator's next action?
 - Is the suggested next-step prompt appropriate for the observed state?
-- Would TOM keep, suppress, or reclassify this signal if the same pattern
+- Would the operator keep, suppress, or reclassify this signal if the same pattern
   appears again?
 
 For All Workstreams:
@@ -91,8 +93,8 @@ Examples of useful notes:
 
 ## False Negative Log
 
-Use this section when TOM noticed a workstream needing attention but Latchboard
-did not show it. Keep entries short and sanitized.
+Use this section when the operator noticed a workstream needing attention but
+Latchboard did not show it. Keep entries short and sanitized.
 
 | Date | Missed condition | Expected reason | Evidence signal missing |
 | --- | --- | --- | --- |
@@ -101,33 +103,42 @@ did not show it. Keep entries short and sanitized.
 Focus on whether the record was missing a safe signal, whether v0 classified it
 incorrectly, or whether the current model cannot represent the condition yet.
 
-## B/D Failure Focus
+## Missing Validation and Next-Step Focus
 
-Prioritize B/D failures over broad workflow coverage:
+Prioritize missing validation and missing next-step failures over broad workflow
+coverage:
 
-- B: completion was claimed but no validation signal was observed.
-- D: work ended or paused without a next-step signal.
+- Missing validation: completion was claimed but no later validation signal was
+  observed.
+- Missing next step: work ended or paused without a next-step signal.
 
 During dogfood review, treat these as the highest-value checks:
 
 - `completion_claim_seen` without later `validation_signal_seen` should create
   a missing validation attention row.
-- `completion_claim_seen` without `next_step_signal_seen` should create a
-  missing next step attention row unless the workstream clearly does not need a
-  next step.
-- A row that catches B/D but feels noisy is still useful to log; do not turn the
-  runbook into a product backlog.
+- `tool_finished` or `idle_signal_seen` without `next_step_signal_seen` should
+  create a missing next-step attention row unless the workstream clearly does
+  not need a next step.
+- If a real missing next-step case cannot be represented with a safe v0 signal,
+  record it as a false negative with `missing safe source signal` as the evidence
+  gap.
+- A row that catches either failure class but feels noisy is still useful to
+  log; do not turn the runbook into a product backlog.
 
 ## Exit Criteria for v0.2
 
 Do not move to Planning Inbox implementation until v0 dogfood validates the
-attention model. v0.2 can start when daily use shows:
+attention model. v0.2 can start only after a 5-working-day dogfood window shows:
 
-- B/D failures are consistently visible in Attention Queue.
-- False positives are explainable and rare enough for daily use.
-- False negatives are either rare or tied to known missing safe signals.
-- Event records remain metadata-only without raw prompts, logs, paths,
+- At least one deliberate missing-validation probe and one deliberate
+  missing-next-step probe appeared in Attention Queue.
+- There were 0 unexplained missing-validation or missing-next-step false
+  negatives.
+- False positives averaged no more than 1 per day, or every extra false positive
+  was documented as an accepted exception.
+- There were 0 privacy violations in event records, notes, or reports.
+- Event records remained metadata-only without raw prompts, logs, paths,
   commands, repo names, branch names, tokens, secrets, customer identifiers, or
   private logs.
-- TOM can decide the next local action from the dashboard without adding
-  collectors or Planning Inbox behavior.
+- The operator could decide the next local action from the dashboard without
+  adding collectors or Planning Inbox behavior.
