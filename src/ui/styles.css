@@ -69,6 +69,35 @@ button {
   font-size: 13px;
 }
 
+.source-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid #bfc8d0;
+  padding: 0 8px;
+  color: #1f2a32;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.source-mode-badge.live {
+  border-color: #aac9b4;
+  background: #eef7f0;
+  color: #26552d;
+}
+
+.source-mode-badge.not-live {
+  border-color: #dec69c;
+  background: #fbf4e7;
+  color: #6b4b12;
+}
+
+.source-mode-badge.disconnected {
+  border-color: #d1b2b2;
+  background: #fbefef;
+  color: #6a2424;
+}
+
 .today-metrics {
   flex-wrap: wrap;
   justify-content: flex-end;

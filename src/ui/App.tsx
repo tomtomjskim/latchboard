@@ -48,6 +48,20 @@ function formatMode(mode: TodaySnapshot["mode"]): string {
   return mode === "demo" ? "Demo" : "Real";
 }
 
+function sourceModeLabel(snapshot: TodaySnapshot): string {
+  if (snapshot.mode === "demo") {
+    return "Demo fixture";
+  }
+  return snapshot.sourceStatus.connected ? "Live local data" : "Source disconnected";
+}
+
+function sourceModeTone(snapshot: TodaySnapshot): string {
+  if (snapshot.mode === "demo") {
+    return "not-live";
+  }
+  return snapshot.sourceStatus.connected ? "live" : "disconnected";
+}
+
 function formatConnection(connected: boolean): string {
   return connected ? "Connected" : "Disconnected";
 }
@@ -142,6 +156,8 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
         <div className="brand-block">
           <strong>Latchboard</strong>
           <span>{formatMode(snapshot.mode)}</span>
+          <span className={`source-mode-badge ${sourceModeTone(snapshot)}`}>{sourceModeLabel(snapshot)}</span>
+          {snapshot.mode === "demo" ? <span className="source-mode-badge not-live">Not live data</span> : null}
         </div>
         <div className="today-metrics">
           <span>{snapshot.date}</span>

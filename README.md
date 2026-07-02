@@ -2,12 +2,23 @@
 
 Local AI work completion gate.
 
+## Current Scope
+
+Latchboard v0.1 is a local read-only monitor. It does not yet provide a
+planning inbox, todo modal, scheduling, Telegram/Hermes execution, or automatic
+agent command dispatch.
+
 ## What It Does
 
 Latchboard turns local JSONL work events into a read-only dashboard for work
 that may need operator attention: missing validation, missing next step, blocked
 work, and stale work. The demo fixture is expected to show 4 Attention Queue
 rows and 5 All Workstreams rows.
+
+In real cmux mode, neutral UI activity such as focus, selection, window, pane,
+surface, workspace, and notification events is reduced to `activity_seen`. This
+shows that the live source is current without treating UI activity alone as a
+missing next-step alert.
 
 Latchboard is source-distributed for local use. npm package publishing is not
 the primary distribution path.
@@ -35,9 +46,9 @@ npm run build
 npm run demo
 ```
 
-Open the printed loopback URL. `npm run demo` uses sanitized fixture data from
-`fixtures/demo-attention-gate.jsonl` and writes `.latchboard/state.json`, which
-is ignored by git.
+Open the printed loopback URL. `npm run demo` uses fixed sanitized fixture data
+from `fixtures/demo-attention-gate.jsonl`, labels the UI as not live data, and
+writes `.latchboard/state.json`, which is ignored by git.
 
 The expected demo result is 4 Attention Queue rows and 5 All Workstreams rows.
 
@@ -55,15 +66,23 @@ Real mode requires an explicit local input file named `events.jsonl`:
 npm run dev -- --input /path/to/events.jsonl
 ```
 
-Use JSONL, one JSON object per line. Keep each event metadata-only:
+For cmux's default local event stream, use:
 
-```json
-{"time":"2026-07-02T09:10:00.000+09:00","source":"cmux","sessionId":"opaque-session-id","kind":"assistant","signals":["completion_claim_seen","next_step_signal_seen"]}
+```bash
+npm run dev:cmux
 ```
 
-Do not include raw prompts, terminal output, full paths, repo names, branch
-names, commands, tokens, secrets, or customer identifiers. See
-[docs/input-format.md](docs/input-format.md) for the safe input contract.
+Real mode currently expects native cmux JSONL event envelopes. Keep each event
+metadata-only:
+
+```json
+{"type":"event","name":"window.keyed","occurred_at":"2026-07-02T05:19:42.996Z","payload":{"workspace_id":"opaque-workspace-id","window_id":"opaque-window-id"}}
+```
+
+Top-level `signals` are not trusted in real cmux mode. Do not include raw
+prompts, terminal output, full paths, repo names, branch names, commands,
+tokens, secrets, or customer identifiers. See [docs/input-format.md](docs/input-format.md)
+for the safe input contract.
 
 ## Runtime Flags
 
@@ -104,6 +123,17 @@ privacy checks, GitHub remote setup, dogfood start, and rollback.
 
 Latchboard v0 is local-only, read-only, and dashboard-focused. Planning Inbox is
 future v0.2 work and is not implemented in v0.
+
+Immediate development priorities:
+
+1. Live cmux baseline: read `~/.cmuxterm/events.jsonl` safely and show current
+   local activity without raw payload leakage. Current implementation shows
+   neutral cmux activity as `activity_seen` and keeps activity-only workstreams
+   out of the Attention Queue.
+2. Planning Inbox: add local-only task intake, validation expectation, next-step
+   requirement, and prompt draft generation.
+3. Agent handoff and scheduling: keep this deferred until explicit approval,
+   dry-run, and audit gates exist.
 
 ## Design Docs
 

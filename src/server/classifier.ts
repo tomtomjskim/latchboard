@@ -36,6 +36,10 @@ function hasCode(workstream: WorkstreamState, code: WorkstreamState["facts"][num
   return workstream.facts.some((fact) => fact.code === code);
 }
 
+function hasActionableWorkSignal(workstream: WorkstreamState): boolean {
+  return workstream.facts.some((fact) => fact.code !== "activity_seen");
+}
+
 function hasValidationAtOrAfterCompletion(workstream: WorkstreamState): boolean {
   const completionTimes = workstream.facts
     .filter((fact) => fact.code === "completion_claim_seen")
@@ -63,6 +67,7 @@ export function classifyWorkstreams(
     const hasCompletionClaim = hasCode(workstream, "completion_claim_seen");
     const hasValidationAfterCompletion = hasValidationAtOrAfterCompletion(workstream);
     const hasNextStepSignal = hasCode(workstream, "next_step_signal_seen");
+    const hasActionableSignal = hasActionableWorkSignal(workstream);
     const isVerifiedDone = workstream.rawState === "verified_done";
 
     if (hasUnresolvedBlockedSignal(workstream)) {
@@ -104,7 +109,7 @@ export function classifyWorkstreams(
       };
     }
 
-    if (!hasNextStepSignal && !isVerifiedDone) {
+    if (hasActionableSignal && !hasNextStepSignal && !isVerifiedDone) {
       return {
         workstreamId: workstream.id,
         attentionReason: "missing_next_step",
@@ -113,6 +118,19 @@ export function classifyWorkstreams(
         evidenceCodes: ["no_next_step_signal"],
         nextStepStatus: "missing",
         nextStepPromptTemplateId: "write_next_step",
+        since
+      };
+    }
+
+    if (!hasActionableSignal) {
+      return {
+        workstreamId: workstream.id,
+        attentionReason: null,
+        severity: "low",
+        certainty: "explicit",
+        evidenceCodes: [],
+        nextStepStatus: "unclear",
+        nextStepPromptTemplateId: "no_prompt",
         since
       };
     }

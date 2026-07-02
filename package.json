@@ -28,6 +28,7 @@
   "scripts": {
     "demo": "tsx src/server/main.ts --mode demo",
     "dev": "tsx src/server/main.ts",
+    "dev:cmux": "tsx src/server/main.ts --mode real --input ~/.cmuxterm/events.jsonl",
     "release:preflight": "node scripts/release-preflight.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

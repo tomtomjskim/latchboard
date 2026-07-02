@@ -137,6 +137,89 @@ describe("classifyWorkstreams", () => {
     });
   });
 
+  it("keeps activity-only workstreams visible without creating missing next-step alerts", () => {
+    const [classification] = classifyWorkstreams(
+      [
+        workstream("ws_activity", "running", "2026-07-01T11:55:00.000Z", [
+          fact("fact_1", "ws_activity", "2026-07-01T11:55:00.000Z", "activity_seen")
+        ])
+      ],
+      { now, staleThresholdMs }
+    );
+
+    expect(classification).toMatchObject({
+      attentionReason: null,
+      severity: "low",
+      certainty: "explicit",
+      evidenceCodes: [],
+      nextStepStatus: "unclear",
+      nextStepPromptTemplateId: "no_prompt"
+    });
+  });
+
+  it("keeps stale activity-only workstreams out of the attention queue", () => {
+    const [classification] = classifyWorkstreams(
+      [
+        workstream("ws_old_activity", "running", "2026-07-01T08:00:00.000Z", [
+          fact("fact_1", "ws_old_activity", "2026-07-01T08:00:00.000Z", "activity_seen")
+        ])
+      ],
+      { now, staleThresholdMs }
+    );
+
+    expect(classification).toMatchObject({
+      attentionReason: null,
+      severity: "low",
+      certainty: "explicit",
+      evidenceCodes: [],
+      nextStepStatus: "unclear",
+      nextStepPromptTemplateId: "no_prompt"
+    });
+  });
+
+  it("does not treat later activity as validation for completion claims", () => {
+    const [classification] = classifyWorkstreams(
+      [
+        workstream("ws_activity_after_completion", "done_claimed", "2026-07-01T11:55:00.000Z", [
+          fact(
+            "fact_1",
+            "ws_activity_after_completion",
+            "2026-07-01T11:30:00.000Z",
+            "completion_claim_seen"
+          ),
+          fact("fact_2", "ws_activity_after_completion", "2026-07-01T11:55:00.000Z", "activity_seen")
+        ])
+      ],
+      { now, staleThresholdMs }
+    );
+
+    expect(classification).toMatchObject({
+      attentionReason: "missing_validation",
+      severity: "high",
+      evidenceCodes: ["completion_claim_without_validation"],
+      nextStepPromptTemplateId: "run_validation"
+    });
+  });
+
+  it("does not treat later activity as blocker resolution", () => {
+    const [classification] = classifyWorkstreams(
+      [
+        workstream("ws_blocked_activity", "running", "2026-07-01T11:55:00.000Z", [
+          fact("fact_1", "ws_blocked_activity", "2026-07-01T11:30:00.000Z", "blocked_signal_seen"),
+          fact("fact_2", "ws_blocked_activity", "2026-07-01T11:55:00.000Z", "activity_seen")
+        ])
+      ],
+      { now, staleThresholdMs }
+    );
+
+    expect(classification).toMatchObject({
+      attentionReason: "blocked",
+      severity: "high",
+      evidenceCodes: ["blocked_signal_without_resolution"],
+      nextStepPromptTemplateId: "resolve_blocker"
+    });
+  });
+
   it("prioritizes unresolved blocked work over other reasons and ignores resolved blockers", () => {
     const classifications = classifyWorkstreams(
       [
