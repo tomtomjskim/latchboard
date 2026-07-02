@@ -119,6 +119,28 @@ const aliasedWorkspaceSnapshot: TodaySnapshot = {
   ]
 };
 
+const emptyRealSnapshot: TodaySnapshot = {
+  ...activityOnlySnapshot,
+  sourceStatus: {
+    connected: true,
+    parsedLineCount: 0,
+    malformedLineCount: 0,
+    partialLineCount: 0
+  },
+  attention: [],
+  workstreams: [],
+  dailySummary: { unresolved: 0, verifiedDone: 0, carryOver: 0 }
+};
+
+const sourceIssueSnapshot: TodaySnapshot = {
+  ...activityOnlySnapshot,
+  sourceStatus: {
+    ...activityOnlySnapshot.sourceStatus,
+    malformedLineCount: 2,
+    partialLineCount: 1
+  }
+};
+
 const linkedScopeSnapshot: TodaySnapshot = {
   ...activityOnlySnapshot,
   workstreams: [
@@ -164,6 +186,31 @@ const linkedScopeSnapshot: TodaySnapshot = {
   ]
 };
 
+const groupedScopeSnapshot: TodaySnapshot = {
+  ...activityOnlySnapshot,
+  workstreams: [
+    ...linkedScopeSnapshot.workstreams,
+    {
+      workstreamId: "ws_cmux_events_pane_cccccccc33333333",
+      label: "pane cccccc",
+      scopeKind: "pane",
+      lastActivityAt: "2026-07-02T14:28:00.000+09:00",
+      rawState: "running",
+      lastSignalCode: "activity_seen",
+      classification: {
+        workstreamId: "ws_cmux_events_pane_cccccccc33333333",
+        attentionReason: null,
+        severity: "low",
+        certainty: "explicit",
+        evidenceCodes: [],
+        nextStepStatus: "unclear",
+        nextStepPromptTemplateId: "no_prompt",
+        since: "2026-07-02T14:28:00.000+09:00"
+      }
+    }
+  ]
+};
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -179,7 +226,7 @@ describe("AppView", () => {
     expect(screen.getByText("Demo fixture")).toBeTruthy();
     expect(screen.getByText("Not live data")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Attention Queue" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Observed Scopes" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Workspace Groups" })).toBeTruthy();
     expect(screen.getByText("Daily Summary")).toBeTruthy();
     expect(screen.getByText("B Missing next step · D Missing validation · Blocked · Stale")).toBeTruthy();
     expect(screen.getAllByText("Missing validation").length).toBeGreaterThan(0);
@@ -229,7 +276,7 @@ describe("AppView", () => {
 
     expect(screen.getByText("Real")).toBeTruthy();
     expect(screen.getByText("Live local data")).toBeTruthy();
-    expect(screen.getByText("No attention items")).toBeTruthy();
+    expect(screen.getByText("Connected, no attention items")).toBeTruthy();
     expect(screen.getByText("1 observed")).toBeTruthy();
     expect(screen.getByRole("button", { name: "View workspace aaaaaa details" })).toBeTruthy();
     expect(screen.getAllByText("workspace").length).toBeGreaterThan(0);
@@ -240,6 +287,21 @@ describe("AppView", () => {
     expect(screen.queryByText("Write the next step before continuing.")).toBeNull();
     expect(screen.queryByText("Run the planned validation and review the result.")).toBeNull();
     expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
+  });
+
+  it("renders source-aware empty states when no scopes are observed today", () => {
+    render(<AppView snapshot={emptyRealSnapshot} />);
+
+    expect(screen.getByText("Connected, no attention items")).toBeTruthy();
+    expect(screen.getByText("No observed scopes for today")).toBeTruthy();
+    expect(screen.getByText("0 observed")).toBeTruthy();
+  });
+
+  it("shows malformed and partial source line counts when present", () => {
+    render(<AppView snapshot={sourceIssueSnapshot} />);
+
+    expect(screen.getByText("Malformed 2")).toBeTruthy();
+    expect(screen.getByText("Partial 1")).toBeTruthy();
   });
 
   it("renders safe cmux repo aliases without exposing workspace ids or paths", () => {
@@ -258,6 +320,19 @@ describe("AppView", () => {
     expect(screen.getAllByText("Parent workspace aaaaaa").length).toBeGreaterThan(0);
     expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
     expect(document.body.textContent).not.toContain("ws_cmux_events_session_bbbbbbbb22222222");
+  });
+
+  it("groups child scopes below their parent workspace and keeps ungrouped scopes separate", () => {
+    render(<AppView snapshot={groupedScopeSnapshot} />);
+
+    expect(screen.getByRole("heading", { name: "Workspace Groups" })).toBeTruthy();
+    expect(screen.getByText("1 child scope")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "View session bbbbbb details" })).toBeTruthy();
+    expect(screen.getByText("Ungrouped Scopes")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "View pane cccccc details" })).toBeTruthy();
+    expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
+    expect(document.body.textContent).not.toContain("ws_cmux_events_session_bbbbbbbb22222222");
+    expect(document.body.textContent).not.toContain("ws_cmux_events_pane_cccccccc33333333");
   });
 
   it("opens a sanitized detail panel for a selected workstream", () => {
@@ -333,7 +408,7 @@ describe("App", () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("Snapshot unavailable")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Observed Scopes" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Workspace Groups" })).toBeTruthy();
   });
 
   it("refreshes the snapshot without a page reload", async () => {

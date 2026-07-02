@@ -64,6 +64,16 @@ type LoadState =
   | { status: "error"; message: string }
   | { status: "ready"; snapshot: TodaySnapshot };
 
+type WorkspaceGroup = {
+  workspace: WorkstreamSummary;
+  children: WorkstreamSummary[];
+};
+
+type GroupedScopes = {
+  groups: WorkspaceGroup[];
+  ungrouped: WorkstreamSummary[];
+};
+
 function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -97,6 +107,14 @@ function sourceModeTone(snapshot: TodaySnapshot): string {
 
 function formatConnection(connected: boolean): string {
   return connected ? "Connected" : "Disconnected";
+}
+
+function attentionEmptyLabel(snapshot: TodaySnapshot): string {
+  return snapshot.sourceStatus.connected ? "Connected, no attention items" : "Source disconnected, no attention items";
+}
+
+function observedEmptyLabel(snapshot: TodaySnapshot): string {
+  return snapshot.sourceStatus.connected ? "No observed scopes for today" : "Source disconnected";
 }
 
 function reasonLabel(reason: AttentionReason | null): string {
@@ -144,6 +162,41 @@ function ParentHint({ scope }: { scope: { parentLabel?: string } }) {
 
 function ScopeAliasBadge({ alias }: { alias?: ScopeAlias }) {
   return alias ? <span className="scope-alias">{scopeAliasLabel(alias)}</span> : null;
+}
+
+function childScopeCountLabel(count: number): string {
+  return `${count} child ${count === 1 ? "scope" : "scopes"}`;
+}
+
+function workspaceGroupsFor(workstreams: WorkstreamSummary[]): GroupedScopes {
+  const groupsById = new Map<string, WorkspaceGroup>();
+  const groups: WorkspaceGroup[] = [];
+  const ungrouped: WorkstreamSummary[] = [];
+
+  workstreams.forEach((workstream) => {
+    if (workstream.scopeKind !== "workspace") {
+      return;
+    }
+
+    const group = { workspace: workstream, children: [] };
+    groupsById.set(workstream.workstreamId, group);
+    groups.push(group);
+  });
+
+  workstreams.forEach((workstream) => {
+    if (workstream.scopeKind === "workspace") {
+      return;
+    }
+
+    const parentGroup = workstream.parentScopeId ? groupsById.get(workstream.parentScopeId) : undefined;
+    if (parentGroup) {
+      parentGroup.children.push(workstream);
+    } else {
+      ungrouped.push(workstream);
+    }
+  });
+
+  return { groups, ungrouped };
 }
 
 function selectedFromSnapshot(snapshot: TodaySnapshot, selectedId: string | null): WorkstreamSummary | null {
@@ -237,10 +290,49 @@ function DetailPanel({ workstream }: { workstream: WorkstreamSummary | null }) {
   );
 }
 
+function WorkstreamRowButton({
+  workstream,
+  isSelected,
+  hasAttention,
+  onSelect,
+  className = "",
+  relationshipLabel
+}: {
+  workstream: WorkstreamSummary;
+  isSelected: boolean;
+  hasAttention: boolean;
+  onSelect: () => void;
+  className?: string;
+  relationshipLabel?: string;
+}) {
+  return (
+    <button
+      className={`workstream-row ${className} ${isSelected ? "is-selected" : ""}`}
+      type="button"
+      onClick={onSelect}
+      aria-pressed={isSelected}
+      aria-label={scopeDetailLabel(workstream)}
+    >
+      <span className="row-title-block">
+        <span className="row-title">{workstream.label}</span>
+        <ScopeAliasBadge alias={workstream.scopeAlias} />
+        <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
+        {relationshipLabel ? <span className="parent-hint">{relationshipLabel}</span> : null}
+        <ParentHint scope={workstream} />
+      </span>
+      <span>{stateLabels[workstream.rawState]}</span>
+      <span>{signalLabel(workstream.lastSignalCode)}</span>
+      <span>{hasAttention ? reasonLabel(workstream.classification.attentionReason) : "Clear"}</span>
+      <span>{formatDateTime(workstream.lastActivityAt)}</span>
+    </button>
+  );
+}
+
 export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
   const [selectedId, setSelectedId] = useState<string | null>(snapshot.attention[0]?.workstreamId ?? null);
   const selected = useMemo(() => selectedFromSnapshot(snapshot, selectedId), [snapshot, selectedId]);
   const attentionIds = useMemo(() => new Set(snapshot.attention.map((row) => row.workstreamId)), [snapshot.attention]);
+  const groupedScopes = useMemo(() => workspaceGroupsFor(snapshot.workstreams), [snapshot.workstreams]);
 
   return (
     <main className="app">
@@ -256,6 +348,12 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
           <span>{formatConnection(snapshot.sourceStatus.connected)}</span>
           <span>Updated {formatDateTime(snapshot.generatedAt)}</span>
           <span>Parsed {snapshot.sourceStatus.parsedLineCount}</span>
+          {snapshot.sourceStatus.malformedLineCount > 0 ? (
+            <span className="source-issue">Malformed {snapshot.sourceStatus.malformedLineCount}</span>
+          ) : null}
+          {snapshot.sourceStatus.partialLineCount > 0 ? (
+            <span className="source-issue">Partial {snapshot.sourceStatus.partialLineCount}</span>
+          ) : null}
           <span>Auto-refresh {snapshotPollMs / 1000}s</span>
           <span>Attention {snapshot.attention.length}</span>
         </div>
@@ -272,7 +370,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
           </div>
           <div className="queue-list">
             {snapshot.attention.length === 0 ? (
-              <p className="empty-state">No attention items</p>
+              <p className="empty-state">{attentionEmptyLabel(snapshot)}</p>
             ) : (
               snapshot.attention.map((row) => (
                 <button
@@ -306,7 +404,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
 
         <section className="workstream-panel" aria-labelledby="workstreams-heading">
           <div className="section-heading">
-            <h2 id="workstreams-heading">Observed Scopes</h2>
+            <h2 id="workstreams-heading">Workspace Groups</h2>
             <span>{snapshot.workstreams.length} observed</span>
           </div>
           <div className="workstream-list">
@@ -317,29 +415,57 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
               <span>Attention</span>
               <span>Last Activity</span>
             </div>
-            <div className="workstream-items" role="list" aria-label="Observed scopes">
-              {snapshot.workstreams.map((workstream) => (
-                <div key={workstream.workstreamId} role="listitem">
-                  <button
-                    className={`workstream-row ${selected?.workstreamId === workstream.workstreamId ? "is-selected" : ""}`}
-                    type="button"
-                    onClick={() => setSelectedId(workstream.workstreamId)}
-                    aria-pressed={selected?.workstreamId === workstream.workstreamId}
-                    aria-label={scopeDetailLabel(workstream)}
-                  >
-                    <span className="row-title-block">
-                      <span className="row-title">{workstream.label}</span>
-                      <ScopeAliasBadge alias={workstream.scopeAlias} />
-                      <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
-                      <ParentHint scope={workstream} />
-                    </span>
-                    <span>{stateLabels[workstream.rawState]}</span>
-                    <span>{signalLabel(workstream.lastSignalCode)}</span>
-                    <span>{attentionIds.has(workstream.workstreamId) ? reasonLabel(workstream.classification.attentionReason) : "Clear"}</span>
-                    <span>{formatDateTime(workstream.lastActivityAt)}</span>
-                  </button>
+            <div className="workstream-items" role="list" aria-label="Workspace groups">
+              {snapshot.workstreams.length === 0 ? (
+                <div role="listitem">
+                  <p className="empty-state">{observedEmptyLabel(snapshot)}</p>
                 </div>
-              ))}
+              ) : (
+                <>
+                  {groupedScopes.groups.map((group) => (
+                    <div className="scope-group" key={group.workspace.workstreamId} role="listitem">
+                      <WorkstreamRowButton
+                        workstream={group.workspace}
+                        isSelected={selected?.workstreamId === group.workspace.workstreamId}
+                        hasAttention={attentionIds.has(group.workspace.workstreamId)}
+                        onSelect={() => setSelectedId(group.workspace.workstreamId)}
+                        className="workspace-group-row"
+                        relationshipLabel={childScopeCountLabel(group.children.length)}
+                      />
+                      {group.children.length > 0 ? (
+                        <div className="scope-group-children">
+                          {group.children.map((child) => (
+                            <WorkstreamRowButton
+                              key={child.workstreamId}
+                              workstream={child}
+                              isSelected={selected?.workstreamId === child.workstreamId}
+                              hasAttention={attentionIds.has(child.workstreamId)}
+                              onSelect={() => setSelectedId(child.workstreamId)}
+                              className="is-child"
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                  {groupedScopes.ungrouped.length > 0 ? (
+                    <div className="scope-group ungrouped" role="listitem">
+                      <div className="scope-group-label">Ungrouped Scopes</div>
+                      <div className="scope-group-children">
+                        {groupedScopes.ungrouped.map((workstream) => (
+                          <WorkstreamRowButton
+                            key={workstream.workstreamId}
+                            workstream={workstream}
+                            isSelected={selected?.workstreamId === workstream.workstreamId}
+                            hasAttention={attentionIds.has(workstream.workstreamId)}
+                            onSelect={() => setSelectedId(workstream.workstreamId)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
             </div>
           </div>
         </section>
