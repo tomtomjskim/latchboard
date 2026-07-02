@@ -21,6 +21,7 @@ export type SafeFact = {
   sourceType: SourceType;
   occurredAt: string;
   workstreamId: string;
+  relatedScopeIds?: string[];
   code: SafeFactCode;
   sourceEventType: SafeSourceEventType;
 };
