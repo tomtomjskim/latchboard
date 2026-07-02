@@ -6,7 +6,7 @@
 
 **Architecture:** Keep v0 as a local Node/React app with sanitized JSONL input, loopback HTTP, and no remote sync. Add release metadata and operator-facing docs only; defer collectors, Planning Inbox, and CLI execution to later specs.
 
-**Tech Stack:** Node.js 22, npm lockfile, TypeScript, React, Vite, Vitest, Playwright.
+**Tech Stack:** Node.js 18.12 or newer, npm lockfile, TypeScript, React, Vite, Vitest, Playwright.
 
 ## Global Constraints
 
@@ -35,7 +35,7 @@
 Create `.nvmrc` with:
 
 ```text
-22
+18
 ```
 
 - [ ] **Step 2: Add MIT license**
@@ -76,7 +76,7 @@ Modify `package.json` so it includes:
   "private": false,
   "license": "MIT",
   "engines": {
-    "node": ">=22 <23"
+    "node": ">=18.12 <23"
   }
 }
 ```
@@ -95,7 +95,7 @@ npm test -- tests/scaffold.test.ts
 
 Expected:
 
-- package metadata shows `version` `0.1.0`, `private` `false`, `license` `MIT`, and Node engine `>=22 <23`.
+- package metadata shows `version` `0.1.0`, `private` `false`, `license` `MIT`, and Node engine `>=18.12 <23`.
 - lockfile remains valid.
 - scaffold tests pass.
 
