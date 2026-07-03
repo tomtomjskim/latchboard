@@ -16,12 +16,12 @@ describe("sanitizeWorkstreamTitle", () => {
   it("drops paths, urls, command-like strings, json, usernames, and secret-looking titles", () => {
     const username = userInfo().username;
     const unsafe = [
-      "/Users/private/acme/project",
+      "/workspace/private/acme/project",
       "https://example.com/task",
       "npm run deploy",
       '{"prompt":"raw prompt terminal output"}',
       `handoff for ${username}`,
-      "sk-proj-secret-token"
+      "token-prefix-secret"
     ];
 
     unsafe.forEach((title) => {
@@ -32,12 +32,12 @@ describe("sanitizeWorkstreamTitle", () => {
 
 describe("safeRepoAliasFromCwd", () => {
   it("uses a repo-like path segment instead of generic dev folders", () => {
-    expect(safeRepoAliasFromCwd("/Users/private/dev/stock-auto/src")).toBe("stock-auto");
+    expect(safeRepoAliasFromCwd("/workspace/projects/stock-auto/src")).toBe("stock-auto");
   });
 
   it("drops generic folders and secret-looking aliases", () => {
-    expect(safeRepoAliasFromCwd("/Users/private/dev")).toBeUndefined();
-    expect(safeRepoAliasFromCwd("/Users/private/dev/secret-token-project")).toBeUndefined();
+    expect(safeRepoAliasFromCwd("/workspace/dev")).toBeUndefined();
+    expect(safeRepoAliasFromCwd("/workspace/dev/secret-token-project")).toBeUndefined();
   });
 });
 
@@ -53,7 +53,7 @@ describe("readWorkstreamMetadata", () => {
           title: "Review missing validation queue",
           status: "running",
           kind: "workspace",
-          cwd: "/Users/private/dev/stock-auto/src",
+          cwd: "/workspace/projects/stock-auto/src",
           createdAt: "2026-07-03T01:00:00.000Z",
           updatedAt: "2026-07-03T01:30:00.000Z"
         }),
@@ -62,7 +62,7 @@ describe("readWorkstreamMetadata", () => {
           title: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW",
           status: "weird",
           kind: "unknown-kind",
-          cwd: "/Users/private/dev",
+          cwd: "/workspace/dev",
           createdAt: "not a date",
           updatedAt: "2026-07-03T02:30:00.000Z"
         }),
@@ -86,6 +86,6 @@ describe("readWorkstreamMetadata", () => {
       updatedAt: "2026-07-03T02:30:00.000Z"
     });
     expect(JSON.stringify([...metadata.values()])).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
-    expect(JSON.stringify([...metadata.values()])).not.toContain("/Users/private/dev");
+    expect(JSON.stringify([...metadata.values()])).not.toContain("/workspace/dev");
   });
 });

@@ -8,10 +8,10 @@ Latchboard becomes a local operational console for AI work monitoring: it must s
 
 Use the `open-design` HUD design system as the visual and interaction reference.
 
-- Source repo: `/Users/jeongsik/dev/open-design`
-- Reference system: `/Users/jeongsik/dev/open-design/design-systems/hud`
-- Token source: `/Users/jeongsik/dev/open-design/design-systems/hud/tokens.css`
-- Product Design context: `/Users/jeongsik/.codex/state/plugins/product-design/user-context.md`
+- Source repo: local `open-design` checkout.
+- Reference system: `open-design/design-systems/hud`.
+- Token source: `open-design/design-systems/hud/tokens.css`.
+- Product Design context: local Product Design saved context.
 
 This refactor follows option B from the planning discussion: data trust, loading/status UX, and Open Design HUD UI refactor. It deliberately avoids building a full task runner, kanban board, CLI execution surface, or planning assistant modal in this slice.
 
@@ -38,7 +38,7 @@ The current real mode reads only `~/.cmuxterm/events.jsonl`. Recent cmux samples
 
 ### Alias Quality
 
-The current repo alias can show `dev` because it derives the alias from the last cwd segment. A parent folder like `/Users/jeongsik/dev` is not a useful repo alias. Alias derivation needs to prefer actual git roots or repo-like cwd segments, and it must reject local account names and generic container folders.
+The current repo alias can show `dev` because it derives the alias from the last cwd segment. A generic parent folder like `<home>/dev` is not a useful repo alias. Alias derivation needs to prefer actual git roots or repo-like cwd segments, and it must reject local account names and generic container folders.
 
 ### UI Structure
 
@@ -294,7 +294,7 @@ git diff --check
 - A bootstrap snapshot renders immediately while background refresh proceeds.
 - The dashboard visibly distinguishes live, demo, disconnected, refreshing, and retrying states.
 - The main screen makes it clearer whether data is only workspace-level or enriched with session/workstream metadata.
-- Safe repo aliases do not show generic `dev` for `/Users/jeongsik/dev`.
+- Safe repo aliases do not show generic `dev` for `<home>/dev`.
 - No raw prompt, command, output, full path, branch, local username, token-like text, or raw JSONL payload reaches public snapshot or DOM.
 - The UI is visually aligned with Open Design HUD: dark operational canvas, dense readouts, restrained motion, and high-contrast status labels.
 - Existing tests plus new targeted tests pass.

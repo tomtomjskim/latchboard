@@ -239,7 +239,7 @@ describe("buildSnapshot", () => {
       scopeKind: "workspace",
       scopeAlias: { kind: "repo", label: "stock-auto" }
     });
-    expect(JSON.stringify(snapshot)).not.toContain("/Users/private/dev/stock-auto");
+    expect(JSON.stringify(snapshot)).not.toContain("/workspace/projects/stock-auto");
   });
 });
 
