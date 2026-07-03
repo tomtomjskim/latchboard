@@ -110,6 +110,16 @@ export type WorkstreamSummary = {
   classification: Classification;
 };
 
+export type WorkstreamMetadata = {
+  workstreamId: string;
+  safeTitle?: string;
+  safeStatus?: RawState;
+  safeKind?: ScopeKind;
+  safeRepoAlias?: ScopeAlias;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type TodaySnapshot = {
   mode: "demo" | "real";
   date: string;

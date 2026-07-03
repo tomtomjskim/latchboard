@@ -6,6 +6,7 @@ export type RuntimeMode = "demo" | "real";
 export type RuntimeConfig = {
   mode: RuntimeMode;
   inputPath: string;
+  workstreamInputPath?: string;
   statePath: string;
   host: "127.0.0.1";
   port: number;
@@ -56,6 +57,10 @@ export function parseRuntimeConfig(argv: string[], deps: { now: Date } = { now: 
   if (mode === "real" && basename(input as string) !== "events.jsonl") {
     throw new Error("real mode --input must be named events.jsonl");
   }
+  const workstreamInput = get("--workstream-input");
+  if (workstreamInput && basename(workstreamInput) !== "workstream.jsonl") {
+    throw new Error("real mode --workstream-input must be named workstream.jsonl");
+  }
 
   const inputPath = mode === "demo" ? resolve("fixtures/demo-attention-gate.jsonl") : resolve(input as string);
   const port = parseIntegerFlag(
@@ -74,6 +79,7 @@ export function parseRuntimeConfig(argv: string[], deps: { now: Date } = { now: 
   return {
     mode,
     inputPath,
+    ...(workstreamInput ? { workstreamInputPath: resolve(workstreamInput) } : {}),
     statePath: resolve(get("--state") ?? ".latchboard/state.json"),
     host: "127.0.0.1",
     port,

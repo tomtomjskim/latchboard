@@ -8,6 +8,7 @@ const now = config.mode === "demo" ? () => new Date("2026-07-01T10:00:00.000+09:
 const runtime = createSnapshotRuntime({
   mode: config.mode,
   inputPath: config.inputPath,
+  workstreamInputPath: config.workstreamInputPath,
   statePath: config.statePath,
   sourceType,
   timezone: config.timezone,

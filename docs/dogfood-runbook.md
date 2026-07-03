@@ -26,6 +26,27 @@ next step.
 Do not add collectors for this routine. Manually create only the safe event
 records needed to validate the v0 model.
 
+## Local cmux Full Mode
+
+For local operator dogfood against cmux-generated files, use the opt-in full
+mode command:
+
+```bash
+npm run dev:cmux:full
+```
+
+This reads:
+
+- `~/.cmuxterm/events.jsonl` for safe activity facts.
+- `~/.cmuxterm/workstream.jsonl` for sanitized display metadata.
+
+The workstream metadata path may improve safe display labels, safe repo aliases,
+scope kind, and status. It must not expose raw prompts, terminal output, command
+text, full paths, branch names, local usernames, or secret-looking strings. If a
+metadata field is questionable, Latchboard drops it and falls back to generated
+opaque labels. Raw `title` values are not used for display; only an explicit
+`safeTitle` field can become a label after sanitizer checks.
+
 ## Event Source Contract
 
 Use JSONL, one JSON object per line. v0 accepts sanitized metadata fields like:
