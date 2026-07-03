@@ -14,6 +14,7 @@ import type {
   SourceStatus,
   SourceType,
   TodaySnapshot,
+  WorkstreamDisplayHint,
   WorkstreamMetadata,
   WorkstreamState,
   WorkstreamSummary
@@ -87,6 +88,19 @@ function scopeAliasFor(state: WorkstreamState): ScopeAlias | undefined {
   return undefined;
 }
 
+function displayHintsFor(
+  state: WorkstreamState,
+  metadata: WorkstreamMetadata | undefined,
+  scopeKind: ScopeKind,
+  scopeAlias: ScopeAlias | undefined
+): WorkstreamDisplayHint[] | undefined {
+  if (state.sourceType === "cmux_events" && scopeKind === "workspace" && !metadata?.safeTitle && !scopeAlias) {
+    return ["needs_safe_label"];
+  }
+
+  return undefined;
+}
+
 export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
   const classificationsById = new Map(input.classifications.map((item) => [item.workstreamId, item]));
   const metadataById = input.workstreamMetadata ?? new Map<string, WorkstreamMetadata>();
@@ -98,11 +112,14 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
     }
     const metadata = metadataById.get(state.id);
     const scopeAlias = metadata?.safeRepoAlias ?? scopeAliasFor(state);
+    const scopeKind = metadata?.safeKind ?? scopeKindFor(state);
+    const displayHints = displayHintsFor(state, metadata, scopeKind, scopeAlias);
 
     return {
       workstreamId: state.id,
       label: metadata?.safeTitle ?? state.label,
-      scopeKind: metadata?.safeKind ?? scopeKindFor(state),
+      scopeKind,
+      ...(displayHints ? { displayHints } : {}),
       ...(scopeAlias ? { scopeAlias } : {}),
       lastActivityAt: state.lastActivityAt,
       rawState: metadata?.safeStatus ?? state.rawState,
@@ -138,6 +155,7 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
       workstreamId: row.workstreamId,
       label: row.label,
       scopeKind: row.scopeKind,
+      ...(row.displayHints ? { displayHints: row.displayHints } : {}),
       ...(row.scopeAlias ? { scopeAlias: row.scopeAlias } : {}),
       ...(row.parentScopeId
         ? {
