@@ -1,15 +1,49 @@
-import type { WorkstreamSummary } from "../../shared/contracts";
+import { useState } from "react";
+import type { TodaySnapshot, WorkstreamSummary } from "../../shared/contracts";
 import { evidenceLabel, nextStepPromptLabel } from "../../shared/contracts";
+import { registerSafeLabel } from "../api";
 import { formatDateTime, reasonLabel, scopeAliasLabel, scopeKindLabel, signalLabel, stateLabels } from "../format";
 import { DisplayHintBadges, ReasonChip, ScopeAliasBadge } from "./ScopeChrome";
+import { SafeLabelModal } from "./SafeLabelModal";
 
-export function ScopeDetail({ workstream }: { workstream: WorkstreamSummary | null }) {
+export function ScopeDetail({
+  workstream,
+  token,
+  onSnapshot
+}: {
+  workstream: WorkstreamSummary | null;
+  token?: string;
+  onSnapshot?: (snapshot: TodaySnapshot) => void;
+}) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+
   if (!workstream) {
     return (
       <aside className="detail-panel" aria-label="Scope detail">
         <p className="empty-state">No scope selected</p>
       </aside>
     );
+  }
+
+  const selectedWorkstream = workstream;
+  const canLabel = Boolean(token && onSnapshot && selectedWorkstream.displayHints?.includes("needs_safe_label"));
+
+  async function copyId() {
+    try {
+      await navigator.clipboard.writeText(selectedWorkstream.workstreamId);
+      setCopyState("copied");
+    } catch {
+      setCopyState("error");
+    }
+  }
+
+  async function submitLabel(safeTitle: string) {
+    if (!token || !onSnapshot) {
+      throw new Error("label registration unavailable");
+    }
+    const snapshot = await registerSafeLabel(token, selectedWorkstream.workstreamId, safeTitle);
+    onSnapshot(snapshot);
   }
 
   return (
@@ -22,7 +56,18 @@ export function ScopeDetail({ workstream }: { workstream: WorkstreamSummary | nu
           <ScopeAliasBadge alias={workstream.scopeAlias} />
           <DisplayHintBadges workstream={workstream} />
         </div>
+        <div className="detail-actions">
+          <button className="hud-button" type="button" onClick={copyId}>
+            {copyState === "copied" ? "Copied" : "Copy ID"}
+          </button>
+          {canLabel ? (
+            <button className="hud-button primary" type="button" onClick={() => setIsModalOpen(true)}>
+              Label
+            </button>
+          ) : null}
+        </div>
       </div>
+      {copyState === "error" ? <p className="form-error">Copy failed</p> : null}
       <dl className="detail-list">
         <div>
           <dt>Scope</dt>
@@ -81,6 +126,7 @@ export function ScopeDetail({ workstream }: { workstream: WorkstreamSummary | nu
           <dd>{nextStepPromptLabel(workstream.classification.nextStepPromptTemplateId)}</dd>
         </div>
       </dl>
+      {isModalOpen ? <SafeLabelModal onClose={() => setIsModalOpen(false)} onSubmit={submitLabel} /> : null}
     </aside>
   );
 }

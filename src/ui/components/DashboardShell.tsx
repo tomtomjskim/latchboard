@@ -30,9 +30,6 @@ export function DashboardShell({
   onSnapshot?: (snapshot: TodaySnapshot) => void;
   onSelect: (workstreamId: string) => void;
 }) {
-  void token;
-  void onSnapshot;
-
   return (
     <main className="app">
       <header className="today-bar" aria-label="Today status">
@@ -61,7 +58,7 @@ export function DashboardShell({
 
       <div className="workspace-grid">
         <AttentionQueue snapshot={snapshot} selected={selected} onSelect={onSelect} />
-        <ScopeDetail workstream={selected} />
+        <ScopeDetail workstream={selected} token={token} onSnapshot={onSnapshot} />
         <WorkspaceMap snapshot={snapshot} selected={selected} attentionIds={attentionIds} onSelect={onSelect} />
       </div>
 

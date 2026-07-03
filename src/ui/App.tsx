@@ -49,7 +49,7 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
     return snapshot ? { status: "ready", snapshot, refreshStatus: "ready" } : { status: "loading" };
   });
   const hasReadySnapshot = useRef(state.status === "ready");
-  const tokenRef = useRef<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +58,7 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
     let token: string;
     try {
       token = readBootstrapToken();
-      tokenRef.current = token;
+      setToken(token);
     } catch {
       setState({ status: "error", message: "Snapshot unavailable" });
       return () => {
@@ -121,7 +121,7 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
     <AppView
       snapshot={state.snapshot}
       refreshStatus={state.refreshStatus}
-      token={tokenRef.current ?? undefined}
+      token={token ?? undefined}
       onSnapshot={(snapshot) => setState({ status: "ready", snapshot, refreshStatus: "ready" })}
     />
   );

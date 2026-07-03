@@ -295,6 +295,79 @@ describe("AppView", () => {
     expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
   });
 
+  it("copies the selected generated workstream id without rendering it as text", async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText }
+    });
+    render(<AppView snapshot={activityOnlySnapshot} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy ID" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("ws_cmux_events_workspace_aaaaaaaa11111111"));
+    expect(screen.getByRole("button", { name: "Copied" })).toBeTruthy();
+    expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
+  });
+
+  it("opens a safe label modal and applies the returned snapshot", async () => {
+    const updatedSnapshot: TodaySnapshot = {
+      ...activityOnlySnapshot,
+      workstreams: [
+        {
+          ...activityOnlySnapshot.workstreams[0],
+          label: "Review validation queue",
+          displayHints: undefined
+        }
+      ]
+    };
+    const onSnapshot = vi.fn();
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ snapshot: updatedSnapshot }), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    render(<AppView snapshot={activityOnlySnapshot} token="test-token" onSnapshot={onSnapshot} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Label" }));
+    expect(screen.getByRole("dialog", { name: "Safe label" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Safe title"), { target: { value: "Review validation queue" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save label" }));
+
+    await waitFor(() => expect(onSnapshot).toHaveBeenCalledWith(updatedSnapshot));
+    expect(fetch).toHaveBeenCalledWith("/api/workstreams/ws_cmux_events_workspace_aaaaaaaa11111111/label", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer test-token",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ safeTitle: "Review validation queue" })
+    });
+    expect(screen.queryByRole("dialog", { name: "Safe label" })).toBeNull();
+  });
+
+  it("keeps the safe label modal open when registration fails", async () => {
+    const fetch = vi.fn(async () => new Response("Bad Request", { status: 400 }));
+    vi.stubGlobal("fetch", fetch);
+    render(<AppView snapshot={activityOnlySnapshot} token="test-token" onSnapshot={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Label" }));
+    fireEvent.change(screen.getByLabelText("Safe title"), { target: { value: "Fix customer Acme refund issue" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save label" }));
+
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Safe label" })).toBeTruthy());
+    expect(screen.getByText("Label registration failed")).toBeTruthy();
+  });
+
+  it("closes the safe label modal with Escape without writing", () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    render(<AppView snapshot={activityOnlySnapshot} token="test-token" onSnapshot={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Label" }));
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog", { name: "Safe label" })).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("renders source-aware empty states when no scopes are observed today", () => {
     render(<AppView snapshot={emptyRealSnapshot} />);
 
