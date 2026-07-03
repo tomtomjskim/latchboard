@@ -17,6 +17,8 @@ export function DashboardShell({
   attentionIds,
   refreshStatus,
   snapshotPollMs,
+  token,
+  onSnapshot,
   onSelect
 }: {
   snapshot: TodaySnapshot;
@@ -24,8 +26,13 @@ export function DashboardShell({
   attentionIds: Set<string>;
   refreshStatus: RefreshStatus;
   snapshotPollMs: number;
+  token?: string;
+  onSnapshot?: (snapshot: TodaySnapshot) => void;
   onSelect: (workstreamId: string) => void;
 }) {
+  void token;
+  void onSnapshot;
+
   return (
     <main className="app">
       <header className="today-bar" aria-label="Today status">
