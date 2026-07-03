@@ -34,7 +34,7 @@ The current status bar shows generated dates and parsed counts, but it does not 
 
 The current real mode reads only `~/.cmuxterm/events.jsonl`. Recent cmux samples show `events.jsonl` is dominated by workspace, pane, surface, window, and notification events. It often has no `session_id`. That means Latchboard can show activity, but it often cannot explain the workstream well enough for quick operator judgement.
 
-`~/.cmuxterm/workstream.jsonl` contains safe candidate metadata keys such as `workstreamId`, `cwd`, `title`, `status`, `kind`, `createdAt`, and `updatedAt`. These must be ingested as opt-in safe metadata, with strict sanitization.
+`~/.cmuxterm/workstream.jsonl` contains safe candidate metadata keys such as `workstreamId`, `cwd`, `safeTitle`, `status`, `kind`, `createdAt`, and `updatedAt`. These must be ingested as opt-in safe metadata, with strict sanitization. Raw `title` values are not trusted for public labels.
 
 ### Alias Quality
 
@@ -204,7 +204,7 @@ type WorkstreamMetadata = {
 };
 ```
 
-`safeTitle` is optional and must not be copied from arbitrary prompts or output. It may only be kept when it passes a conservative title sanitizer:
+`safeTitle` is optional and must not be copied from arbitrary prompts or output. Raw `title` is ignored. `safeTitle` may only be kept when it passes a conservative title sanitizer:
 
 - length 2 through 80,
 - no absolute paths,
@@ -239,8 +239,8 @@ Alias logic must reject:
 
 For cwd aliases:
 
-1. Prefer actual git root basename when the cwd is inside a git repository.
-2. Otherwise use the nearest repo-like segment that contains package or git markers if available from safe local inspection.
+1. Use only a sanitized child segment below an explicit repo container such as `projects`, `repos`, `workspaces`, or `code`.
+2. Reject generic, local account, and secret-looking names.
 3. Otherwise drop alias rather than showing a misleading generic folder.
 
 The UI may show opaque generated labels when no safe alias exists.

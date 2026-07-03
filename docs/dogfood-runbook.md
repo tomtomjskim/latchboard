@@ -44,7 +44,8 @@ The workstream metadata path may improve safe display labels, safe repo aliases,
 scope kind, and status. It must not expose raw prompts, terminal output, command
 text, full paths, branch names, local usernames, or secret-looking strings. If a
 metadata field is questionable, Latchboard drops it and falls back to generated
-opaque labels.
+opaque labels. Raw `title` values are not used for display; only an explicit
+`safeTitle` field can become a label after sanitizer checks.
 
 ## Event Source Contract
 

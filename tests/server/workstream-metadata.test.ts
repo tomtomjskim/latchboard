@@ -21,7 +21,9 @@ describe("sanitizeWorkstreamTitle", () => {
       "npm run deploy",
       '{"prompt":"raw prompt terminal output"}',
       `handoff for ${username}`,
-      "token-prefix-secret"
+      "token-prefix-secret",
+      "github_pat_example_value",
+      "Fix customer Acme refund issue before launch"
     ];
 
     unsafe.forEach((title) => {
@@ -38,6 +40,7 @@ describe("safeRepoAliasFromCwd", () => {
   it("drops generic folders and secret-looking aliases", () => {
     expect(safeRepoAliasFromCwd("/workspace/dev")).toBeUndefined();
     expect(safeRepoAliasFromCwd("/workspace/dev/secret-token-project")).toBeUndefined();
+    expect(safeRepoAliasFromCwd("/workspace/client-acme/dev")).toBeUndefined();
   });
 });
 
@@ -50,7 +53,8 @@ describe("readWorkstreamMetadata", () => {
       [
         JSON.stringify({
           workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
-          title: "Review missing validation queue",
+          title: "Fix customer Acme refund issue before launch",
+          safeTitle: "Review missing validation queue",
           status: "running",
           kind: "workspace",
           cwd: "/workspace/projects/stock-auto/src",
@@ -59,7 +63,8 @@ describe("readWorkstreamMetadata", () => {
         }),
         JSON.stringify({
           workstreamId: "ws_cmux_events_workspace_bbbbbbbb22222222",
-          title: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW",
+          title: "Review missing validation queue",
+          safeTitle: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW",
           status: "weird",
           kind: "unknown-kind",
           cwd: "/workspace/dev",
@@ -86,6 +91,7 @@ describe("readWorkstreamMetadata", () => {
       updatedAt: "2026-07-03T02:30:00.000Z"
     });
     expect(JSON.stringify([...metadata.values()])).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
+    expect(JSON.stringify([...metadata.values()])).not.toContain("Fix customer Acme refund issue before launch");
     expect(JSON.stringify([...metadata.values()])).not.toContain("/workspace/dev");
   });
 });

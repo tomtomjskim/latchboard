@@ -13,7 +13,9 @@ const unsafeFragments = [
   "cookie",
   "credential",
   "ghp",
+  "github_pat",
   "password",
+  "patprefix",
   "private_key",
   "privatekey",
   "secretkey",
@@ -38,6 +40,8 @@ const genericAliasSegments = new Set([
   "workspace",
   "workspaces"
 ]);
+const repoContainerSegments = new Set(["code", "projects", "repos", "workspaces"]);
+const sensitiveTitleTerms = new Set(["account", "client", "customer", "email", "invoice", "order", "payment", "phone", "refund"]);
 const allowedStatuses = new Set<RawState>(["running", "waiting", "done_claimed", "verified_done", "unknown"]);
 const allowedKinds = new Set<ScopeKind>(["workspace", "session", "surface", "pane", "window", "workstream"]);
 const localAccountAlias = userInfo().username.toLowerCase();
@@ -55,6 +59,11 @@ function containsUnsafeFragment(value: string): boolean {
   const lowered = value.toLowerCase();
   const compacted = lowered.replace(/[^a-z0-9]/g, "");
   return unsafeFragments.some((fragment) => lowered.includes(fragment) || compacted.includes(fragment));
+}
+
+function containsSensitiveTitleTerm(value: string): boolean {
+  const lowered = value.toLowerCase();
+  return [...sensitiveTitleTerms].some((term) => new RegExp(`\\b${term}\\b`).test(lowered));
 }
 
 function safeIsoTime(value: unknown): string | undefined {
@@ -106,11 +115,12 @@ export function safeRepoAliasFromCwd(value: unknown): string | undefined {
     .split(/[\\/]+/)
     .filter(Boolean);
 
-  for (let index = segments.length - 1; index >= 0; index -= 1) {
-    const label = sanitizeRepoAliasLabel(segments[index]);
-    if (label) {
-      return label;
+  for (let index = segments.length - 2; index >= 0; index -= 1) {
+    if (!repoContainerSegments.has(segments[index].toLowerCase())) {
+      continue;
     }
+
+    return sanitizeRepoAliasLabel(segments[index + 1]);
   }
 
   return undefined;
@@ -131,7 +141,7 @@ export function sanitizeWorkstreamTitle(value: unknown): string | undefined {
   if (/^(npm|pnpm|yarn|node|tsx|python|python3|git|gh|curl|ssh|scp|rm|cp|mv)\s+/i.test(title)) {
     return undefined;
   }
-  if (containsUnsafeFragment(title)) {
+  if (containsUnsafeFragment(title) || containsSensitiveTitleTerm(title)) {
     return undefined;
   }
   if (localAccountAlias.length >= 3 && title.toLowerCase().includes(localAccountAlias)) {
@@ -163,7 +173,7 @@ function metadataFromRecord(value: Record<string, unknown>): WorkstreamMetadata 
   const metadata: WorkstreamMetadata = {
     workstreamId: safeCmuxWorkspaceId(rawId)
   };
-  const title = sanitizeWorkstreamTitle(value.title);
+  const title = sanitizeWorkstreamTitle(value.safeTitle);
   const status = safeStatus(value.status);
   const kind = safeKind(value.kind);
   const alias = safeAlias(value.cwd);
