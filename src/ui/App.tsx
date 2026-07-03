@@ -11,6 +11,7 @@ import type {
 } from "../shared/contracts";
 import { evidenceLabel, nextStepPromptLabel } from "../shared/contracts";
 import { fetchSnapshot, readBootstrapSnapshot, readBootstrapToken } from "./api";
+import { LoadingSkeleton } from "./components/LoadingSkeleton";
 
 const snapshotPollMs = 2000;
 
@@ -59,10 +60,12 @@ const signalLabels: Record<SafeFactCode, string> = {
   unknown_safe_event: "unknown"
 };
 
+type RefreshStatus = "bootstrapping" | "ready" | "refreshing" | "retrying" | "disconnected";
+
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; snapshot: TodaySnapshot };
+  | { status: "ready"; snapshot: TodaySnapshot; refreshStatus: RefreshStatus };
 
 type WorkspaceGroup = {
   workspace: WorkstreamSummary;
@@ -107,6 +110,21 @@ function sourceModeTone(snapshot: TodaySnapshot): string {
 
 function formatConnection(connected: boolean): string {
   return connected ? "Connected" : "Disconnected";
+}
+
+function refreshStatusLabel(status: RefreshStatus, snapshot: TodaySnapshot): string {
+  if (!snapshot.sourceStatus.connected) {
+    return "Disconnected";
+  }
+
+  const labels: Record<RefreshStatus, string> = {
+    bootstrapping: "Loading",
+    ready: "Live",
+    refreshing: "Refreshing",
+    retrying: "Retrying",
+    disconnected: "Disconnected"
+  };
+  return labels[status];
 }
 
 function attentionEmptyLabel(snapshot: TodaySnapshot): string {
@@ -328,7 +346,7 @@ function WorkstreamRowButton({
   );
 }
 
-export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
+export function AppView({ snapshot, refreshStatus = "ready" }: { snapshot: TodaySnapshot; refreshStatus?: RefreshStatus }) {
   const [selectedId, setSelectedId] = useState<string | null>(snapshot.attention[0]?.workstreamId ?? null);
   const selected = useMemo(() => selectedFromSnapshot(snapshot, selectedId), [snapshot, selectedId]);
   const attentionIds = useMemo(() => new Set(snapshot.attention.map((row) => row.workstreamId)), [snapshot.attention]);
@@ -341,6 +359,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
           <strong>Latchboard</strong>
           <span>{formatMode(snapshot.mode)}</span>
           <span className={`source-mode-badge ${sourceModeTone(snapshot)}`}>{sourceModeLabel(snapshot)}</span>
+          <span className={`refresh-status ${refreshStatus}`}>{refreshStatusLabel(refreshStatus, snapshot)}</span>
           {snapshot.mode === "demo" ? <span className="source-mode-badge not-live">Not live data</span> : null}
         </div>
         <div className="today-metrics">
@@ -499,7 +518,7 @@ export function AppView({ snapshot }: { snapshot: TodaySnapshot }) {
 export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
   const [state, setState] = useState<LoadState>(() => {
     const snapshot = readBootstrapSnapshot();
-    return snapshot ? { status: "ready", snapshot } : { status: "loading" };
+    return snapshot ? { status: "ready", snapshot, refreshStatus: "ready" } : { status: "loading" };
   });
   const hasReadySnapshot = useRef(state.status === "ready");
 
@@ -518,15 +537,29 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
     }
 
     async function load(initial: boolean) {
+      if (!initial && !cancelled) {
+        setState((current) =>
+          current.status === "ready"
+            ? { ...current, refreshStatus: current.snapshot.sourceStatus.connected ? "refreshing" : "disconnected" }
+            : current
+        );
+      }
+
       try {
         const snapshot = await fetchSnapshot(token);
         if (!cancelled) {
           hasReadySnapshot.current = true;
-          setState({ status: "ready", snapshot });
+          setState({
+            status: "ready",
+            snapshot,
+            refreshStatus: snapshot.sourceStatus.connected ? "ready" : "disconnected"
+          });
         }
       } catch {
         if (!cancelled && initial && !hasReadySnapshot.current) {
           setState({ status: "error", message: "Snapshot unavailable" });
+        } else if (!cancelled) {
+          setState((current) => (current.status === "ready" ? { ...current, refreshStatus: "retrying" } : current));
         }
       }
     }
@@ -547,12 +580,12 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
   }, [pollMs]);
 
   if (state.status === "loading") {
-    return <main className="app app-state">Loading Latchboard</main>;
+    return <LoadingSkeleton />;
   }
 
   if (state.status === "error") {
     return <main className="app app-state">{state.message}</main>;
   }
 
-  return <AppView snapshot={state.snapshot} />;
+  return <AppView snapshot={state.snapshot} refreshStatus={state.refreshStatus} />;
 }

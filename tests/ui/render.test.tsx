@@ -1,7 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TodaySnapshot } from "../../src/shared/contracts";
 import { App, AppView } from "../../src/ui/App";
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const snapshot: TodaySnapshot = {
   mode: "demo",
@@ -267,7 +270,7 @@ describe("AppView", () => {
 
     expect(screen.getByText("Real")).toBeTruthy();
     expect(screen.getByText("Source disconnected")).toBeTruthy();
-    expect(screen.getByText("Disconnected")).toBeTruthy();
+    expect(screen.getAllByText("Disconnected").length).toBeGreaterThan(0);
     expect(screen.queryByText("Live local data")).toBeNull();
   });
 
@@ -362,7 +365,8 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(screen.getByText("Loading Latchboard")).toBeTruthy();
+    expect(screen.getByLabelText("Loading dashboard skeleton")).toBeTruthy();
+    expect(screen.queryByText("Loading Latchboard")).toBeNull();
     await waitFor(() => expect(screen.getByRole("heading", { name: "Attention Queue" })).toBeTruthy());
     expect(fetch).toHaveBeenCalledWith("/api/snapshot", {
       headers: { Authorization: "Bearer test-token" }
@@ -388,7 +392,9 @@ describe("App", () => {
     expect(screen.getByText("Live local data")).toBeTruthy();
     expect(screen.getByText("12")).toBeTruthy();
     expect(fetch).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(1000);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -405,10 +411,13 @@ describe("App", () => {
     expect(screen.queryByText("Loading Latchboard")).toBeNull();
     expect(screen.getByText("Live local data")).toBeTruthy();
     expect(screen.getByText("12")).toBeTruthy();
-    await vi.advanceTimersByTimeAsync(1000);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("Snapshot unavailable")).toBeNull();
     expect(screen.getByRole("heading", { name: "Workspace Groups" })).toBeTruthy();
+    expect(screen.getByText("Retrying")).toBeTruthy();
   });
 
   it("refreshes the snapshot without a page reload", async () => {
