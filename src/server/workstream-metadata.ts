@@ -173,7 +173,8 @@ function metadataFromRecord(value: Record<string, unknown>): WorkstreamMetadata 
   const metadata: WorkstreamMetadata = {
     workstreamId: safeCmuxWorkspaceId(rawId)
   };
-  const title = sanitizeWorkstreamTitle(value.safeTitle);
+  const explicitSafeTitle = Object.hasOwn(value, "safeTitle");
+  const title = sanitizeWorkstreamTitle(explicitSafeTitle ? value.safeTitle : value.title);
   const status = safeStatus(value.status);
   const kind = safeKind(value.kind);
   const alias = safeAlias(value.cwd);

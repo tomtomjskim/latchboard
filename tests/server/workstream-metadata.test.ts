@@ -71,6 +71,14 @@ describe("readWorkstreamMetadata", () => {
           createdAt: "not a date",
           updatedAt: "2026-07-03T02:30:00.000Z"
         }),
+        JSON.stringify({
+          workstreamId: "ws_cmux_events_workspace_cccccccc33333333",
+          title: "Review validation queue",
+          status: "running",
+          kind: "workspace",
+          cwd: "/workspace/projects/latchboard",
+          updatedAt: "2026-07-03T03:30:00.000Z"
+        }),
         ""
       ].join("\n")
     );
@@ -89,6 +97,14 @@ describe("readWorkstreamMetadata", () => {
     expect(metadata.get("ws_cmux_events_workspace_bbbbbbbb22222222")).toEqual({
       workstreamId: "ws_cmux_events_workspace_bbbbbbbb22222222",
       updatedAt: "2026-07-03T02:30:00.000Z"
+    });
+    expect(metadata.get("ws_cmux_events_workspace_cccccccc33333333")).toEqual({
+      workstreamId: "ws_cmux_events_workspace_cccccccc33333333",
+      safeTitle: "Review validation queue",
+      safeStatus: "running",
+      safeKind: "workspace",
+      safeRepoAlias: { kind: "repo", label: "latchboard" },
+      updatedAt: "2026-07-03T03:30:00.000Z"
     });
     expect(JSON.stringify([...metadata.values()])).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
     expect(JSON.stringify([...metadata.values()])).not.toContain("Fix customer Acme refund issue before launch");
