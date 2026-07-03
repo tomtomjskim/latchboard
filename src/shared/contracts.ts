@@ -20,6 +20,7 @@ export type ScopeAlias = {
   kind: "repo";
   label: string;
 };
+export type WorkstreamDisplayHint = "needs_safe_label";
 
 export type SafeFact = {
   id: string;
@@ -85,6 +86,7 @@ export type AttentionRow = {
   workstreamId: string;
   label: string;
   scopeKind: ScopeKind;
+  displayHints?: WorkstreamDisplayHint[];
   scopeAlias?: ScopeAlias;
   parentScopeId?: string;
   parentLabel?: string;
@@ -99,6 +101,7 @@ export type WorkstreamSummary = {
   workstreamId: string;
   label: string;
   scopeKind: ScopeKind;
+  displayHints?: WorkstreamDisplayHint[];
   scopeAlias?: ScopeAlias;
   parentScopeId?: string;
   parentLabel?: string;

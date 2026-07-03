@@ -1,7 +1,7 @@
 import type { WorkstreamSummary } from "../../shared/contracts";
 import { evidenceLabel, nextStepPromptLabel } from "../../shared/contracts";
 import { formatDateTime, reasonLabel, scopeAliasLabel, scopeKindLabel, signalLabel, stateLabels } from "../format";
-import { ReasonChip, ScopeAliasBadge } from "./ScopeChrome";
+import { DisplayHintBadges, ReasonChip, ScopeAliasBadge } from "./ScopeChrome";
 
 export function ScopeDetail({ workstream }: { workstream: WorkstreamSummary | null }) {
   if (!workstream) {
@@ -20,6 +20,7 @@ export function ScopeDetail({ workstream }: { workstream: WorkstreamSummary | nu
           <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
           <h2>{workstream.label}</h2>
           <ScopeAliasBadge alias={workstream.scopeAlias} />
+          <DisplayHintBadges workstream={workstream} />
         </div>
       </div>
       <dl className="detail-list">
@@ -43,6 +44,12 @@ export function ScopeDetail({ workstream }: { workstream: WorkstreamSummary | nu
           <div>
             <dt>Parent Alias</dt>
             <dd>{scopeAliasLabel(workstream.parentScopeAlias)}</dd>
+          </div>
+        ) : null}
+        {workstream.displayHints?.includes("needs_safe_label") ? (
+          <div>
+            <dt>Context</dt>
+            <dd>Safe label missing</dd>
           </div>
         ) : null}
         <div>
