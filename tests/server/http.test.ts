@@ -87,13 +87,18 @@ function updatedSnapshot(): TodaySnapshot {
 
 async function withServer<T>(
   run: (url: string) => Promise<T>,
-  options: { staticRoot?: string; getSnapshot?: () => TodaySnapshot } = {}
+  options: {
+    staticRoot?: string;
+    getSnapshot?: () => TodaySnapshot;
+    registerSafeLabel?: (workstreamId: string, safeTitle: string) => TodaySnapshot;
+  } = {}
 ): Promise<T> {
   const server = await createLatchboardServer({
     host: "127.0.0.1",
     port: 0,
     token: "test-token",
     getSnapshot: options.getSnapshot ?? snapshot,
+    registerSafeLabel: options.registerSafeLabel,
     staticRoot: options.staticRoot
   });
 
@@ -178,6 +183,101 @@ describe("createLatchboardServer", () => {
       expect(body).not.toContain("command");
       expect(body).not.toContain("output");
     });
+  });
+
+  it("requires bearer token for workstream label registration", async () => {
+    await withServer(
+      async (url) => {
+        const response = await fetch(`${url}/api/workstreams/ws_attention/label`, {
+          method: "POST",
+          body: JSON.stringify({ safeTitle: "Review validation queue" })
+        });
+
+        expect(response.status).toBe(401);
+      },
+      { registerSafeLabel: () => updatedSnapshot() }
+    );
+  });
+
+  it("returns unavailable when label registration is not configured", async () => {
+    await withServer(async (url) => {
+      const response = await fetch(`${url}/api/workstreams/ws_attention/label`, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-token",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ safeTitle: "Review validation queue" })
+      });
+
+      expect(response.status).toBe(409);
+      expect(await response.text()).toBe("Label registration unavailable");
+    });
+  });
+
+  it("rejects label registration for unknown workstream ids", async () => {
+    await withServer(
+      async (url) => {
+        const response = await fetch(`${url}/api/workstreams/ws_missing/label`, {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer test-token",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ safeTitle: "Review validation queue" })
+        });
+
+        expect(response.status).toBe(404);
+      },
+      { registerSafeLabel: () => updatedSnapshot() }
+    );
+  });
+
+  it("rejects unsafe safeTitle label registration payloads", async () => {
+    await withServer(
+      async (url) => {
+        const response = await fetch(`${url}/api/workstreams/ws_attention/label`, {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer test-token",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ safeTitle: "Fix customer Acme refund issue" })
+        });
+
+        expect(response.status).toBe(400);
+      },
+      {
+        registerSafeLabel: () => {
+          throw new Error("safeTitle did not pass sanitizer");
+        }
+      }
+    );
+  });
+
+  it("registers a safe label and returns the updated snapshot", async () => {
+    await withServer(
+      async (url) => {
+        const response = await fetch(`${url}/api/workstreams/ws_attention/label`, {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer test-token",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ safeTitle: "Review validation queue" })
+        });
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ snapshot: updatedSnapshot() });
+      },
+      {
+        registerSafeLabel: (workstreamId, safeTitle) => {
+          expect(workstreamId).toBe("ws_attention");
+          expect(safeTitle).toBe("Review validation queue");
+          return updatedSnapshot();
+        }
+      }
+    );
   });
 
   it("returns bad request for malformed encoded workstream ids", async () => {

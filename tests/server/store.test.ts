@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildSnapshot, createSnapshotRuntime, writeSnapshot } from "../../src/server/store";
-import type { Classification, SafeFact, SourceStatus, WorkstreamState } from "../../src/shared/contracts";
+import type { Classification, SafeFact, SourceStatus, TodaySnapshot, WorkstreamState } from "../../src/shared/contracts";
 
 function fact(id: string, workstreamId: string, occurredAt: string): SafeFact {
   return {
@@ -333,6 +333,57 @@ describe("createSnapshotRuntime", () => {
     expect(updated.dailySummary).toEqual({ unresolved: 0, verifiedDone: 1, carryOver: 0 });
     expect(updated.sourceStatus.parsedLineCount).toBe(2);
     expect(JSON.parse(readFileSync(statePath, "utf8"))).toEqual(updated);
+  });
+
+  it("registers a safe label, rebuilds the snapshot, writes sidecar, and publishes the update", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "latchboard-runtime-label-"));
+    const inputPath = join(dir, "events.jsonl");
+    const workstreamInputPath = join(dir, "workstream.jsonl");
+    const statePath = join(dir, "state.json");
+    writeFileSync(
+      inputPath,
+      `${JSON.stringify({
+        type: "event",
+        name: "workspace.selected",
+        occurred_at: "2026-07-03T05:00:00.000Z",
+        payload: {
+          workspace_id: "opaque-workspace-1",
+          cwd: "/workspace/dev"
+        }
+      })}\n`
+    );
+    const runtime = createSnapshotRuntime({
+      mode: "real",
+      inputPath,
+      workstreamInputPath,
+      statePath,
+      sourceType: "cmux_events",
+      timezone: "Asia/Seoul",
+      staleThresholdMs: 2 * 60 * 60 * 1000,
+      now: () => new Date("2026-07-03T14:10:00.000+09:00")
+    });
+
+    await runtime.pollOnce();
+    const initial = runtime.getSnapshot();
+    const workstreamId = initial.workstreams[0].workstreamId;
+    expect(initial.workstreams[0].displayHints).toEqual(["needs_safe_label"]);
+
+    let published: TodaySnapshot | null = null;
+    runtime.subscribe((snapshot) => {
+      published = snapshot;
+    });
+
+    const updated = runtime.registerSafeLabel(workstreamId, "Review validation queue");
+
+    expect(updated.workstreams[0]).toMatchObject({
+      workstreamId,
+      label: "Review validation queue"
+    });
+    expect(updated.workstreams[0].displayHints).toBeUndefined();
+    expect(published).toEqual(updated);
+    expect(JSON.parse(readFileSync(statePath, "utf8"))).toEqual(updated);
+    expect(readFileSync(workstreamInputPath, "utf8")).toContain('"safeTitle":"Review validation queue"');
+    expect(readFileSync(workstreamInputPath, "utf8")).not.toContain("opaque-workspace-1");
   });
 
   it("does not publish duplicate updates when only generatedAt would change", async () => {
