@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import {
   readWorkstreamMetadata,
   sanitizeWorkstreamTitle,
-  safeRepoAliasFromCwd
+  safeRepoAliasFromCwd,
+  workstreamMetadataAliasKey
 } from "../../src/server/workstream-metadata";
 
 describe("sanitizeWorkstreamTitle", () => {
@@ -35,6 +36,7 @@ describe("sanitizeWorkstreamTitle", () => {
 describe("safeRepoAliasFromCwd", () => {
   it("uses a repo-like path segment instead of generic dev folders", () => {
     expect(safeRepoAliasFromCwd("/workspace/projects/stock-auto/src")).toBe("stock-auto");
+    expect(safeRepoAliasFromCwd("/workspace/dev/latchboard")).toBe("latchboard");
   });
 
   it("drops generic folders and secret-looking aliases", () => {
@@ -105,6 +107,10 @@ describe("readWorkstreamMetadata", () => {
       safeKind: "workspace",
       safeRepoAlias: { kind: "repo", label: "latchboard" },
       updatedAt: "2026-07-03T03:30:00.000Z"
+    });
+    expect(metadata.get(workstreamMetadataAliasKey({ kind: "repo", label: "latchboard" }))).toMatchObject({
+      safeTitle: "Review validation queue",
+      safeRepoAlias: { kind: "repo", label: "latchboard" }
     });
     expect(JSON.stringify([...metadata.values()])).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
     expect(JSON.stringify([...metadata.values()])).not.toContain("Fix customer Acme refund issue before launch");
