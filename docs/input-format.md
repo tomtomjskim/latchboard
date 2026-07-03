@@ -14,7 +14,7 @@ On a local cmux setup that writes `~/.cmuxterm/events.jsonl`, run:
 npm run dev:cmux
 ```
 
-To opt in to local repo aliases from cmux workspace `cwd` basenames, run:
+To opt in to local repo aliases from cmux workspace `cwd` paths, run:
 
 ```bash
 npm run dev:cmux:aliases
@@ -79,9 +79,10 @@ When `--show-repo-aliases` is enabled, public summaries may also include:
 - `scopeAlias`
 - `parentScopeAlias`
 
-Only constrained `repo <name>` aliases derived from the final `cwd` path segment
-are emitted. This is an explicit local opt-in because a repo basename can still
-be sensitive. Full paths are never emitted.
+Only constrained `repo <name>` aliases derived from a sanitized child segment
+below an explicit repo container such as `projects`, `repos`, `workspaces`, or
+`code` are emitted. This is an explicit local opt-in because a repo basename can
+still be sensitive. Full paths are never emitted.
 
 Use opaque identifiers. Do not use repo names, paths, branch names, customer
 names, or other meaningful local labels as identifiers.
@@ -131,8 +132,9 @@ Current v0 blocked-work resolution is derived from a later
 Do not include raw prompts, terminal output, full paths, repo names, branch
 names, commands, tokens, secrets, or customer identifiers.
 
-If `--show-repo-aliases` is enabled, ensure the final `cwd` path segment is safe
-to show in the local browser, snapshot sidecar, REST API, and SSE stream.
+If `--show-repo-aliases` is enabled, ensure any repo container child segment in
+`cwd` is safe to show in the local browser, snapshot sidecar, REST API, and SSE
+stream.
 
 Input events should contain only:
 

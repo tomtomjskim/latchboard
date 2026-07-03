@@ -296,6 +296,42 @@ describe("normalizeRecords", () => {
     expect(JSON.stringify(facts)).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
   });
 
+  it("rejects generic cmux workspace aliases and parent folder promotion", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 187,
+          value: {
+            type: "event",
+            name: "workspace.selected",
+            occurred_at: "2026-07-02T05:19:50.000Z",
+            payload: {
+              workspace_id: "opaque-workspace-1",
+              cwd: "/workspace/dev"
+            }
+          }
+        },
+        {
+          lineNumber: 188,
+          value: {
+            type: "event",
+            name: "workspace.selected",
+            occurred_at: "2026-07-02T05:19:51.000Z",
+            payload: {
+              workspace_id: "opaque-workspace-2",
+              cwd: "/workspace/client-acme/dev"
+            }
+          }
+        }
+      ],
+      "cmux_events",
+      { showRepoAliases: true }
+    );
+
+    expect(facts.map((fact) => fact.scopeAlias)).toEqual([undefined, undefined]);
+    expect(JSON.stringify(facts)).not.toContain("client-acme");
+  });
+
   it("does not expose the local account name as a cmux workspace alias", () => {
     const username = userInfo().username;
     const facts = normalizeRecords(

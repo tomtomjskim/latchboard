@@ -81,6 +81,24 @@ const unsafeAliasFragments = [
   "secret",
   "token"
 ];
+const genericAliasSegments = new Set([
+  "app",
+  "apps",
+  "code",
+  "dev",
+  "home",
+  "private",
+  "project",
+  "projects",
+  "repo",
+  "repos",
+  "src",
+  "user",
+  "users",
+  "workspace",
+  "workspaces"
+]);
+const repoContainerSegments = new Set(["code", "projects", "repos", "workspaces"]);
 const localAccountAlias = userInfo().username.toLowerCase();
 
 export type NormalizeOptions = {
@@ -202,12 +220,6 @@ function cmuxScopeIdsFor(value: Record<string, unknown>, fields: CmuxIdentityFie
   return Array.from(new Set(ids));
 }
 
-function lastPathSegment(value: string): string | undefined {
-  const trimmed = value.trim().replace(/[\\/]+$/, "");
-  const parts = trimmed.split(/[\\/]+/).filter(Boolean);
-  return parts[parts.length - 1];
-}
-
 function sanitizeRepoAliasLabel(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -223,6 +235,9 @@ function sanitizeRepoAliasLabel(value: unknown): string | undefined {
 
   const lowered = label.toLowerCase();
   const compacted = lowered.replace(/[^a-z0-9]/g, "");
+  if (genericAliasSegments.has(lowered)) {
+    return undefined;
+  }
   if (unsafeAliasFragments.some((fragment) => lowered.includes(fragment) || compacted.includes(fragment))) {
     return undefined;
   }
@@ -238,7 +253,21 @@ function safeRepoAliasLabelFromPath(value: unknown): string | undefined {
     return undefined;
   }
 
-  return sanitizeRepoAliasLabel(lastPathSegment(value));
+  const segments = value
+    .trim()
+    .replace(/[\\/]+$/, "")
+    .split(/[\\/]+/)
+    .filter(Boolean);
+
+  for (let index = segments.length - 2; index >= 0; index -= 1) {
+    if (!repoContainerSegments.has(segments[index].toLowerCase())) {
+      continue;
+    }
+
+    return sanitizeRepoAliasLabel(segments[index + 1]);
+  }
+
+  return undefined;
 }
 
 export function sanitizeScopeAlias(value: unknown): ScopeAlias | undefined {
