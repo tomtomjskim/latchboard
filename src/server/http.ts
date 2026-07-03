@@ -9,6 +9,7 @@ type LatchboardServerOptions = {
   port: number;
   token: string;
   getSnapshot: () => TodaySnapshot;
+  registerSafeLabel?: (workstreamId: string, safeTitle: string) => TodaySnapshot;
   subscribeToSnapshots?: (listener: (snapshot: TodaySnapshot) => void) => () => void;
   staticRoot?: string;
 };
@@ -129,14 +130,90 @@ function workstreamById(snapshot: TodaySnapshot, id: string): WorkstreamSummary 
   return snapshot.workstreams.find((workstream) => workstream.workstreamId === id);
 }
 
-function routeApi(
+function labelRouteId(pathname: string): string | null {
+  const prefix = "/api/workstreams/";
+  const suffix = "/label";
+  return pathname.startsWith(prefix) && pathname.endsWith(suffix)
+    ? pathname.slice(prefix.length, -suffix.length)
+    : null;
+}
+
+async function readJsonBody(request: IncomingMessage): Promise<unknown> {
+  let body = "";
+  for await (const chunk of request) {
+    body += chunk;
+    if (body.length > 4096) {
+      throw new Error("request body too large");
+    }
+  }
+
+  return body ? JSON.parse(body) : {};
+}
+
+function isLabelPayload(value: unknown): value is { safeTitle: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof (value as { safeTitle?: unknown }).safeTitle === "string" &&
+    (value as { safeTitle: string }).safeTitle.trim().length > 0
+  );
+}
+
+async function routeApi(
   request: IncomingMessage,
   response: ServerResponse,
   options: LatchboardServerOptions,
   pathname: string
-): void {
+): Promise<void> {
   if (!isAuthorized(request, options.token)) {
     writeText(response, 401, "Unauthorized");
+    return;
+  }
+
+  const rawLabelId = labelRouteId(pathname);
+  if (rawLabelId !== null) {
+    if (request.method !== "POST") {
+      writeText(response, 405, "Method Not Allowed");
+      return;
+    }
+    if (!options.registerSafeLabel) {
+      writeText(response, 409, "Label registration unavailable");
+      return;
+    }
+
+    let id: string;
+    try {
+      id = decodeURIComponent(rawLabelId);
+    } catch {
+      writeText(response, 400, "Bad Request");
+      return;
+    }
+
+    if (!workstreamById(options.getSnapshot(), id)) {
+      writeText(response, 404, "Not Found");
+      return;
+    }
+
+    let body: unknown;
+    try {
+      body = await readJsonBody(request);
+    } catch {
+      writeText(response, 400, "Bad Request");
+      return;
+    }
+
+    if (!isLabelPayload(body)) {
+      writeText(response, 400, "Bad Request");
+      return;
+    }
+
+    try {
+      const snapshot = options.registerSafeLabel(id, body.safeTitle);
+      writeJson(response, 200, { snapshot });
+    } catch {
+      writeText(response, 400, "Bad Request");
+    }
     return;
   }
 
@@ -201,7 +278,13 @@ export async function createLatchboardServer(options: LatchboardServerOptions): 
   const server = createServer((request, response) => {
     const url = new URL(request.url ?? "/", `http://${options.host}`);
     if (url.pathname.startsWith("/api/")) {
-      routeApi(request, response, options, url.pathname);
+      void routeApi(request, response, options, url.pathname).catch(() => {
+        if (!response.headersSent) {
+          writeText(response, 500, "Internal Server Error");
+        } else {
+          response.end();
+        }
+      });
       return;
     }
 

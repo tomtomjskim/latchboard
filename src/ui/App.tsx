@@ -16,10 +16,14 @@ type LoadState =
 
 export function AppView({
   snapshot,
-  refreshStatus = "ready"
+  refreshStatus = "ready",
+  token,
+  onSnapshot
 }: {
   snapshot: TodaySnapshot;
   refreshStatus?: RefreshStatus;
+  token?: string;
+  onSnapshot?: (snapshot: TodaySnapshot) => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(snapshot.attention[0]?.workstreamId ?? null);
   const selected = useMemo(() => selectedFromSnapshot(snapshot, selectedId), [snapshot, selectedId]);
@@ -32,6 +36,8 @@ export function AppView({
       attentionIds={attentionIds}
       refreshStatus={refreshStatus}
       snapshotPollMs={snapshotPollMs}
+      token={token}
+      onSnapshot={onSnapshot}
       onSelect={setSelectedId}
     />
   );
@@ -43,6 +49,7 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
     return snapshot ? { status: "ready", snapshot, refreshStatus: "ready" } : { status: "loading" };
   });
   const hasReadySnapshot = useRef(state.status === "ready");
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +58,7 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
     let token: string;
     try {
       token = readBootstrapToken();
+      setToken(token);
     } catch {
       setState({ status: "error", message: "Snapshot unavailable" });
       return () => {
@@ -109,5 +117,12 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
     return <main className="app app-state">{state.message}</main>;
   }
 
-  return <AppView snapshot={state.snapshot} refreshStatus={state.refreshStatus} />;
+  return (
+    <AppView
+      snapshot={state.snapshot}
+      refreshStatus={state.refreshStatus}
+      token={token ?? undefined}
+      onSnapshot={(snapshot) => setState({ status: "ready", snapshot, refreshStatus: "ready" })}
+    />
+  );
 }

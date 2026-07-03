@@ -32,3 +32,21 @@ export async function fetchSnapshot(token: string): Promise<TodaySnapshot> {
 
   return response.json() as Promise<TodaySnapshot>;
 }
+
+export async function registerSafeLabel(token: string, workstreamId: string, safeTitle: string): Promise<TodaySnapshot> {
+  const response = await fetch(`/api/workstreams/${encodeURIComponent(workstreamId)}/label`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ safeTitle })
+  });
+
+  if (!response.ok) {
+    throw new Error(`label registration failed with status ${response.status}`);
+  }
+
+  const body = (await response.json()) as { snapshot: TodaySnapshot };
+  return body.snapshot;
+}

@@ -24,6 +24,7 @@ const server = await createLatchboardServer({
   port: config.port,
   token: config.token,
   getSnapshot: runtime.getSnapshot,
+  registerSafeLabel: config.workstreamInputPath ? runtime.registerSafeLabel : undefined,
   subscribeToSnapshots: runtime.subscribe
 });
 

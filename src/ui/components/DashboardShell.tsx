@@ -17,6 +17,8 @@ export function DashboardShell({
   attentionIds,
   refreshStatus,
   snapshotPollMs,
+  token,
+  onSnapshot,
   onSelect
 }: {
   snapshot: TodaySnapshot;
@@ -24,6 +26,8 @@ export function DashboardShell({
   attentionIds: Set<string>;
   refreshStatus: RefreshStatus;
   snapshotPollMs: number;
+  token?: string;
+  onSnapshot?: (snapshot: TodaySnapshot) => void;
   onSelect: (workstreamId: string) => void;
 }) {
   return (
@@ -54,7 +58,7 @@ export function DashboardShell({
 
       <div className="workspace-grid">
         <AttentionQueue snapshot={snapshot} selected={selected} onSelect={onSelect} />
-        <ScopeDetail workstream={selected} />
+        <ScopeDetail workstream={selected} token={token} onSnapshot={onSnapshot} />
         <WorkspaceMap snapshot={snapshot} selected={selected} attentionIds={attentionIds} onSelect={onSelect} />
       </div>
 

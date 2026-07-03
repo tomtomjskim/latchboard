@@ -5,6 +5,7 @@ import { readJsonlSince, type SourceCursor } from "./events-adapter";
 import { normalizeRecords, sanitizeScopeAlias } from "./normalizer";
 import { reduceWorkstreams } from "./reducer";
 import { readWorkstreamMetadata } from "./workstream-metadata";
+import { appendWorkstreamLabel } from "./workstream-labels";
 import type {
   AttentionRow,
   Classification,
@@ -47,6 +48,7 @@ export type SnapshotRuntimeOptions = {
 export type SnapshotRuntime = {
   getSnapshot: () => TodaySnapshot;
   pollOnce: () => Promise<TodaySnapshot>;
+  registerSafeLabel: (workstreamId: string, safeTitle: string) => TodaySnapshot;
   start: () => void;
   stop: () => void;
   subscribe: (listener: (snapshot: TodaySnapshot) => void) => () => void;
@@ -262,6 +264,22 @@ export function createSnapshotRuntime(options: SnapshotRuntimeOptions): Snapshot
     }
   }
 
+  function registerSafeLabel(workstreamId: string, safeTitle: string): TodaySnapshot {
+    if (!options.workstreamInputPath) {
+      throw new Error("Label registration unavailable");
+    }
+    if (!snapshot.workstreams.some((workstream) => workstream.workstreamId === workstreamId)) {
+      throw new Error("Workstream not found");
+    }
+
+    appendWorkstreamLabel(options.workstreamInputPath, { workstreamId, safeTitle }, options.now());
+    snapshot = buildCurrentSnapshot();
+    writeSnapshot(options.statePath, snapshot);
+    hasWrittenSnapshot = true;
+    publish(snapshot);
+    return snapshot;
+  }
+
   function comparableSnapshot(value: TodaySnapshot): Omit<TodaySnapshot, "generatedAt"> {
     const { generatedAt: _generatedAt, ...comparable } = value;
     return comparable;
@@ -301,6 +319,7 @@ export function createSnapshotRuntime(options: SnapshotRuntimeOptions): Snapshot
   return {
     getSnapshot: () => snapshot,
     pollOnce,
+    registerSafeLabel,
     start: () => {
       if (interval) {
         return;
