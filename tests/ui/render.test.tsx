@@ -94,6 +94,7 @@ const activityOnlySnapshot: TodaySnapshot = {
       workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
       label: "workspace aaaaaa",
       scopeKind: "workspace",
+      displayHints: ["needs_safe_label"],
       lastActivityAt: "2026-07-02T14:29:00.000+09:00",
       rawState: "running",
       lastSignalCode: "activity_seen",
@@ -282,6 +283,8 @@ describe("AppView", () => {
     expect(screen.getByText("Connected, no attention items")).toBeTruthy();
     expect(screen.getByText("1 observed")).toBeTruthy();
     expect(screen.getByRole("button", { name: "View workspace aaaaaa details" })).toBeTruthy();
+    expect(screen.getAllByText("Needs label").length).toBeGreaterThan(0);
+    expect(screen.getByText("Safe label missing")).toBeTruthy();
     expect(screen.getAllByText("workspace").length).toBeGreaterThan(0);
     expect(screen.getAllByText("activity").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Clear").length).toBeGreaterThan(0);

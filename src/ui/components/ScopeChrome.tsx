@@ -19,6 +19,14 @@ export function ScopeAliasBadge({ alias }: { alias?: ScopeAlias }) {
   return alias ? <span className="scope-alias">{scopeAliasLabel(alias)}</span> : null;
 }
 
+export function DisplayHintBadges({ workstream }: { workstream: WorkstreamSummary }) {
+  if (!workstream.displayHints?.includes("needs_safe_label")) {
+    return null;
+  }
+
+  return <span className="display-hint">Needs label</span>;
+}
+
 export function WorkstreamRowButton({
   workstream,
   isSelected,
@@ -47,6 +55,7 @@ export function WorkstreamRowButton({
       <span className="row-title-block">
         <span className="row-title">{workstream.label}</span>
         <ScopeAliasBadge alias={workstream.scopeAlias} />
+        <DisplayHintBadges workstream={workstream} />
         <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
         {relationshipLabel ? <span className="parent-hint">{relationshipLabel}</span> : null}
         <ParentHint scope={workstream} />

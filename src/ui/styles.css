@@ -384,6 +384,21 @@ button {
   font-weight: 800;
 }
 
+.display-hint {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  border: 1px solid rgb(251 191 36 / 56%);
+  background: rgb(251 191 36 / 10%);
+  color: var(--warn);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  line-height: 1;
+  padding: 3px 6px;
+  text-transform: uppercase;
+}
+
 .row-meta {
   display: -webkit-box;
   overflow: hidden;
