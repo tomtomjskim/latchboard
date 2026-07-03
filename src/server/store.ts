@@ -4,6 +4,7 @@ import { classifyWorkstreams } from "./classifier";
 import { readJsonlSince, type SourceCursor } from "./events-adapter";
 import { normalizeRecords, sanitizeScopeAlias } from "./normalizer";
 import { reduceWorkstreams } from "./reducer";
+import { readWorkstreamMetadata } from "./workstream-metadata";
 import type {
   AttentionRow,
   Classification,
@@ -13,6 +14,7 @@ import type {
   SourceStatus,
   SourceType,
   TodaySnapshot,
+  WorkstreamMetadata,
   WorkstreamState,
   WorkstreamSummary
 } from "../shared/contracts";
@@ -25,6 +27,7 @@ export type BuildSnapshotInput = {
   sourceStatus: SourceStatus;
   workstreams: WorkstreamState[];
   classifications: Classification[];
+  workstreamMetadata?: Map<string, WorkstreamMetadata>;
 };
 
 export type SnapshotRuntimeOptions = {
@@ -32,6 +35,7 @@ export type SnapshotRuntimeOptions = {
   inputPath: string;
   statePath: string;
   sourceType: SourceType;
+  workstreamInputPath?: string;
   timezone: string;
   staleThresholdMs: number;
   showRepoAliases?: boolean;
@@ -85,21 +89,23 @@ function scopeAliasFor(state: WorkstreamState): ScopeAlias | undefined {
 
 export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
   const classificationsById = new Map(input.classifications.map((item) => [item.workstreamId, item]));
+  const metadataById = input.workstreamMetadata ?? new Map<string, WorkstreamMetadata>();
 
   const workstreams: WorkstreamSummary[] = input.workstreams.map((state) => {
     const classification = classificationsById.get(state.id);
     if (!classification) {
       throw new Error(`missing classification for workstream ${state.id}`);
     }
-    const scopeAlias = scopeAliasFor(state);
+    const metadata = metadataById.get(state.id);
+    const scopeAlias = metadata?.safeRepoAlias ?? scopeAliasFor(state);
 
     return {
       workstreamId: state.id,
-      label: state.label,
-      scopeKind: scopeKindFor(state),
+      label: metadata?.safeTitle ?? state.label,
+      scopeKind: metadata?.safeKind ?? scopeKindFor(state),
       ...(scopeAlias ? { scopeAlias } : {}),
       lastActivityAt: state.lastActivityAt,
-      rawState: state.rawState,
+      rawState: metadata?.safeStatus ?? state.rawState,
       lastSignalCode: state.facts[state.facts.length - 1]?.code ?? "unknown_safe_event",
       classification
     };
@@ -227,7 +233,8 @@ export function createSnapshotRuntime(options: SnapshotRuntimeOptions): Snapshot
       generatedAt: now.toISOString(),
       sourceStatus,
       workstreams,
-      classifications
+      classifications,
+      workstreamMetadata: readWorkstreamMetadata(options.workstreamInputPath)
     });
   }
 

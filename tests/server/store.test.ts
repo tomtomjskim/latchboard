@@ -200,6 +200,47 @@ describe("buildSnapshot", () => {
     expect(snapshot.workstreams[0].scopeAlias).toBeUndefined();
     expect(JSON.stringify(snapshot)).not.toContain("secret-token-project");
   });
+
+  it("applies sanitized workstream metadata to public summaries", () => {
+    const workspaceFact: SafeFact = {
+      id: "fact_workspace",
+      sourceType: "cmux_events",
+      occurredAt: "2026-07-02T05:00:00.000Z",
+      workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      code: "activity_seen",
+      sourceEventType: "system"
+    };
+
+    const snapshot = buildSnapshot({
+      mode: "real",
+      date: "2026-07-02",
+      timezone: "Asia/Seoul",
+      generatedAt: "2026-07-02T05:10:00.000Z",
+      sourceStatus,
+      workstreams: [workstream("ws_cmux_events_workspace_aaaaaaaa11111111", "running", [workspaceFact])],
+      classifications: [classification("ws_cmux_events_workspace_aaaaaaaa11111111", null)],
+      workstreamMetadata: new Map([
+        [
+          "ws_cmux_events_workspace_aaaaaaaa11111111",
+          {
+            workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+            safeTitle: "Review missing validation queue",
+            safeStatus: "waiting",
+            safeKind: "workspace",
+            safeRepoAlias: { kind: "repo", label: "stock-auto" }
+          }
+        ]
+      ])
+    });
+
+    expect(snapshot.workstreams[0]).toMatchObject({
+      label: "Review missing validation queue",
+      rawState: "waiting",
+      scopeKind: "workspace",
+      scopeAlias: { kind: "repo", label: "stock-auto" }
+    });
+    expect(JSON.stringify(snapshot)).not.toContain("/Users/private/dev/stock-auto");
+  });
 });
 
 describe("writeSnapshot", () => {

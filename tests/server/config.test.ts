@@ -40,6 +40,23 @@ describe("parseRuntimeConfig", () => {
     expect(enabled.showRepoAliases).toBe(true);
   });
 
+  it("accepts optional workstream metadata input when named workstream.jsonl", () => {
+    const config = parseRuntimeConfig(
+      ["--mode", "real", "--input", "/tmp/events.jsonl", "--workstream-input", "/tmp/workstream.jsonl"],
+      { now }
+    );
+
+    expect(config.workstreamInputPath).toBe("/tmp/workstream.jsonl");
+  });
+
+  it("rejects workstream metadata input that is not named workstream.jsonl", () => {
+    expect(() =>
+      parseRuntimeConfig(["--mode", "real", "--input", "/tmp/events.jsonl", "--workstream-input", "/tmp/events.jsonl"], {
+        now
+      })
+    ).toThrow("real mode --workstream-input must be named workstream.jsonl");
+  });
+
   it("accepts port 0 for ephemeral test servers", () => {
     const config = parseRuntimeConfig(["--mode", "demo", "--port", "0"], { now });
 
