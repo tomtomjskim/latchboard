@@ -33,10 +33,11 @@ paths, commands, tokens, branch names, and repo names are not part of the public
 contract.
 
 Repo aliases are disabled by default. If `--show-repo-aliases` is passed,
-Latchboard may expose a constrained `repo <name>` alias derived from the final
-`cwd` path segment of cmux `workspace.selected` events. This still may reveal a
-private project/customer name, so use it only for local operator triage when
-that tradeoff is acceptable. Full paths remain excluded.
+Latchboard may expose a constrained `repo <name>` alias derived from a sanitized
+child segment below an explicit repo container such as `projects`, `repos`,
+`workspaces`, or `code` in cmux `workspace.selected` events. This still may
+reveal a private project/customer name, so use it only for local operator triage
+when that tradeoff is acceptable. Full paths remain excluded.
 
 ## Quick Start
 
