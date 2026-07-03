@@ -20,6 +20,12 @@ To opt in to local repo aliases from cmux workspace `cwd` paths, run:
 npm run dev:cmux:aliases
 ```
 
+To append sanitized display metadata for the full cmux view, run:
+
+```bash
+npm run label:cmux -- --workstream-id ws_cmux_events_workspace_aaaaaaaa11111111 --safe-title "Review validation queue"
+```
+
 Files with other names are rejected in real mode.
 
 ## Native cmux Event

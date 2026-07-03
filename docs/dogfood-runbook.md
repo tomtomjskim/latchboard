@@ -47,6 +47,17 @@ metadata field is questionable, Latchboard drops it and falls back to generated
 opaque labels. Raw `title` values are not used for display; only an explicit
 `safeTitle` field can become a label after sanitizer checks.
 
+To attach a safe label to an observed generated workstream id, append sanitized
+metadata locally:
+
+```bash
+npm run label:cmux -- --workstream-id ws_cmux_events_workspace_aaaaaaaa11111111 --safe-title "Review validation queue"
+```
+
+Use only operator-safe labels. Do not paste raw prompts, commands, terminal
+output, customer identifiers, secret-looking text, branch names, or full paths
+into `safeTitle`.
+
 ## Event Source Contract
 
 Use JSONL, one JSON object per line. v0 accepts sanitized metadata fields like:
