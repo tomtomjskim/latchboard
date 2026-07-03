@@ -40,7 +40,7 @@ const genericAliasSegments = new Set([
   "workspace",
   "workspaces"
 ]);
-const repoContainerSegments = new Set(["code", "projects", "repos", "workspaces"]);
+const repoContainerSegments = new Set(["code", "dev", "projects", "repos", "workspaces"]);
 const sensitiveTitleTerms = new Set(["account", "client", "customer", "email", "invoice", "order", "payment", "phone", "refund"]);
 const allowedStatuses = new Set<RawState>(["running", "waiting", "done_claimed", "verified_done", "unknown"]);
 const allowedKinds = new Set<ScopeKind>(["workspace", "session", "surface", "pane", "window", "workstream"]);
@@ -164,6 +164,10 @@ function safeAlias(value: unknown): ScopeAlias | undefined {
   return label ? { kind: "repo", label } : undefined;
 }
 
+export function workstreamMetadataAliasKey(alias: ScopeAlias): string {
+  return `alias:${alias.kind}:${alias.label.toLowerCase()}`;
+}
+
 function metadataFromRecord(value: Record<string, unknown>): WorkstreamMetadata | undefined {
   const rawId = stringField(value, "workstreamId");
   if (!rawId) {
@@ -173,7 +177,8 @@ function metadataFromRecord(value: Record<string, unknown>): WorkstreamMetadata 
   const metadata: WorkstreamMetadata = {
     workstreamId: safeCmuxWorkspaceId(rawId)
   };
-  const title = sanitizeWorkstreamTitle(value.safeTitle);
+  const explicitSafeTitle = Object.hasOwn(value, "safeTitle");
+  const title = sanitizeWorkstreamTitle(explicitSafeTitle ? value.safeTitle : value.title);
   const status = safeStatus(value.status);
   const kind = safeKind(value.kind);
   const alias = safeAlias(value.cwd);
@@ -224,6 +229,9 @@ export function readWorkstreamMetadata(path: string | undefined): Map<string, Wo
       const entry = metadataFromRecord(value);
       if (entry) {
         metadata.set(entry.workstreamId, entry);
+        if (entry.safeRepoAlias) {
+          metadata.set(workstreamMetadataAliasKey(entry.safeRepoAlias), entry);
+        }
       }
     } catch {
       // Ignore malformed metadata lines; sourceStatus remains owned by events.jsonl.

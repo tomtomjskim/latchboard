@@ -98,7 +98,7 @@ const genericAliasSegments = new Set([
   "workspace",
   "workspaces"
 ]);
-const repoContainerSegments = new Set(["code", "projects", "repos", "workspaces"]);
+const repoContainerSegments = new Set(["code", "dev", "projects", "repos", "workspaces"]);
 const localAccountAlias = userInfo().username.toLowerCase();
 
 export type NormalizeOptions = {

@@ -272,6 +272,31 @@ describe("normalizeRecords", () => {
     expect(JSON.stringify(facts)).not.toContain("opaque-workspace-1");
   });
 
+  it("derives a repo alias from a local dev checkout path when explicitly enabled", () => {
+    const facts = normalizeRecords(
+      [
+        {
+          lineNumber: 186,
+          value: {
+            type: "event",
+            name: "workspace.selected",
+            occurred_at: "2026-07-02T05:19:50.000Z",
+            payload: {
+              workspace_id: "opaque-workspace-1",
+              cwd: "/workspace/dev/latchboard"
+            }
+          }
+        }
+      ],
+      "cmux_events",
+      { showRepoAliases: true }
+    );
+
+    expect(facts[0].scopeAlias).toEqual({ kind: "repo", label: "latchboard" });
+    expect(JSON.stringify(facts)).not.toContain("/workspace/dev/latchboard");
+    expect(JSON.stringify(facts)).not.toContain("opaque-workspace-1");
+  });
+
   it("rejects unsafe cmux workspace aliases", () => {
     const facts = normalizeRecords(
       [

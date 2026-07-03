@@ -4,7 +4,7 @@ import { classifyWorkstreams } from "./classifier";
 import { readJsonlSince, type SourceCursor } from "./events-adapter";
 import { normalizeRecords, sanitizeScopeAlias } from "./normalizer";
 import { reduceWorkstreams } from "./reducer";
-import { readWorkstreamMetadata } from "./workstream-metadata";
+import { readWorkstreamMetadata, workstreamMetadataAliasKey } from "./workstream-metadata";
 import { appendWorkstreamLabel } from "./workstream-labels";
 import type {
   AttentionRow,
@@ -112,14 +112,17 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
     if (!classification) {
       throw new Error(`missing classification for workstream ${state.id}`);
     }
-    const metadata = metadataById.get(state.id);
-    const scopeAlias = metadata?.safeRepoAlias ?? scopeAliasFor(state);
+    const stateScopeAlias = scopeAliasFor(state);
+    const metadata =
+      metadataById.get(state.id) ??
+      (stateScopeAlias ? metadataById.get(workstreamMetadataAliasKey(stateScopeAlias)) : undefined);
+    const scopeAlias = metadata?.safeRepoAlias ?? stateScopeAlias;
     const scopeKind = metadata?.safeKind ?? scopeKindFor(state);
     const displayHints = displayHintsFor(state, metadata, scopeKind, scopeAlias);
 
     return {
       workstreamId: state.id,
-      label: metadata?.safeTitle ?? state.label,
+      label: metadata?.safeTitle ?? scopeAlias?.label ?? state.label,
       scopeKind,
       ...(displayHints ? { displayHints } : {}),
       ...(scopeAlias ? { scopeAlias } : {}),

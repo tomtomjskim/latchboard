@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildSnapshot, createSnapshotRuntime, writeSnapshot } from "../../src/server/store";
+import { workstreamMetadataAliasKey } from "../../src/server/workstream-metadata";
 import type { Classification, SafeFact, SourceStatus, TodaySnapshot, WorkstreamState } from "../../src/shared/contracts";
 
 function fact(id: string, workstreamId: string, occurredAt: string): SafeFact {
@@ -241,6 +242,45 @@ describe("buildSnapshot", () => {
     });
     expect(snapshot.workstreams[0].displayHints).toBeUndefined();
     expect(JSON.stringify(snapshot)).not.toContain("/workspace/projects/stock-auto");
+  });
+
+  it("uses repo-alias metadata to auto-label workstreams when source ids do not match", () => {
+    const workspaceFact: SafeFact = {
+      id: "fact_workspace",
+      sourceType: "cmux_events",
+      occurredAt: "2026-07-02T05:00:00.000Z",
+      workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      code: "activity_seen",
+      sourceEventType: "system",
+      scopeAlias: { kind: "repo", label: "latchboard" }
+    };
+
+    const snapshot = buildSnapshot({
+      mode: "real",
+      date: "2026-07-02",
+      timezone: "Asia/Seoul",
+      generatedAt: "2026-07-02T05:10:00.000Z",
+      sourceStatus,
+      workstreams: [workstream("ws_cmux_events_workspace_aaaaaaaa11111111", "running", [workspaceFact])],
+      classifications: [classification("ws_cmux_events_workspace_aaaaaaaa11111111", null)],
+      workstreamMetadata: new Map([
+        [
+          workstreamMetadataAliasKey({ kind: "repo", label: "latchboard" }),
+          {
+            workstreamId: "ws_cmux_events_workspace_unmatched",
+            safeTitle: "Review validation queue",
+            safeRepoAlias: { kind: "repo", label: "latchboard" }
+          }
+        ]
+      ])
+    });
+
+    expect(snapshot.workstreams[0]).toMatchObject({
+      label: "Review validation queue",
+      scopeAlias: { kind: "repo", label: "latchboard" }
+    });
+    expect(snapshot.workstreams[0].displayHints).toBeUndefined();
+    expect(JSON.stringify(snapshot)).not.toContain("ws_cmux_events_workspace_unmatched");
   });
 
   it("marks unlabeled cmux workspace summaries as needing a safe label", () => {
