@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { userInfo } from "node:os";
-import type { RawState, ScopeAlias, ScopeKind, WorkstreamMetadata } from "../shared/contracts";
+import type { RawState, ScopeAlias, ScopeKind, WorkstreamActivity, WorkstreamActivityState, WorkstreamMetadata } from "../shared/contracts";
 
 const unsafeFragments = [
   "accesskey",
@@ -53,6 +53,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function stringField(value: Record<string, unknown>, field: string): string | undefined {
   const raw = value[field];
   return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : undefined;
+}
+
+function recordField(value: Record<string, unknown> | undefined, field: string): Record<string, unknown> | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const raw = value[field];
+  return isRecord(raw) ? raw : undefined;
+}
+
+function booleanField(value: Record<string, unknown> | undefined, field: string): boolean | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const raw = value[field];
+  return typeof raw === "boolean" ? raw : undefined;
 }
 
 function containsUnsafeFragment(value: string): boolean {
@@ -151,6 +169,50 @@ export function sanitizeWorkstreamTitle(value: unknown): string | undefined {
   return title;
 }
 
+function sanitizeWorkstreamSummary(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const summary = value.trim().replace(/\s+/g, " ");
+  if (summary.length < 2 || summary.length > 140) {
+    return undefined;
+  }
+  if (/[/\\]/.test(summary) || /https?:\/\//i.test(summary) || /^[\[{]/.test(summary)) {
+    return undefined;
+  }
+  if (/^(npm|pnpm|yarn|node|tsx|python|python3|git|gh|curl|ssh|scp|rm|cp|mv|cat|sed|grep|rg|ls|cd|pwd|docker|kubectl)\s+/i.test(summary)) {
+    return undefined;
+  }
+  if (/[;&|`$<>]/.test(summary)) {
+    return undefined;
+  }
+  if (containsUnsafeFragment(summary) || containsSensitiveTitleTerm(summary)) {
+    return undefined;
+  }
+  if (localAccountAlias.length >= 3 && summary.toLowerCase().includes(localAccountAlias)) {
+    return undefined;
+  }
+
+  return summary;
+}
+
+function safeToolName(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const toolName = value.trim();
+  if (!/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/.test(toolName)) {
+    return undefined;
+  }
+  if (containsUnsafeFragment(toolName)) {
+    return undefined;
+  }
+
+  return toolName;
+}
+
 function safeStatus(value: unknown): RawState | undefined {
   return allowedStatuses.has(value as RawState) ? (value as RawState) : undefined;
 }
@@ -162,6 +224,54 @@ function safeKind(value: unknown): ScopeKind | undefined {
 function safeAlias(value: unknown): ScopeAlias | undefined {
   const label = safeRepoAliasFromCwd(value);
   return label ? { kind: "repo", label } : undefined;
+}
+
+function activityStateFromRecord(value: Record<string, unknown>): WorkstreamActivityState | undefined {
+  const payload = recordField(value, "payload");
+  const toolUse = recordField(payload, "toolUse");
+  const toolResult = recordField(payload, "toolResult");
+  const question = recordField(payload, "question");
+  const permissionRequest = recordField(payload, "permissionRequest");
+  const status = recordField(value, "status");
+
+  if (booleanField(toolResult, "isError") === true) {
+    return "tool_error";
+  }
+  if (toolUse) {
+    return "running_tool";
+  }
+  if (question || permissionRequest || booleanField(status, "pending") === true) {
+    return "waiting_for_input";
+  }
+  if (toolResult) {
+    return "idle";
+  }
+
+  return undefined;
+}
+
+function activityFromRecord(value: Record<string, unknown>): WorkstreamActivity | undefined {
+  const context = recordField(value, "context");
+  const payload = recordField(value, "payload");
+  const toolUse = recordField(payload, "toolUse");
+  const toolResult = recordField(payload, "toolResult");
+  const permissionRequest = recordField(payload, "permissionRequest");
+  const summary = sanitizeWorkstreamSummary(context?.toolSummary);
+  const plan = sanitizeWorkstreamSummary(context?.planSummary);
+  const lastTool =
+    safeToolName(toolUse?.toolName) ?? safeToolName(toolResult?.toolName) ?? safeToolName(permissionRequest?.toolName);
+  const state = activityStateFromRecord(value) ?? (summary || plan || lastTool ? "idle" : undefined);
+
+  if (!state) {
+    return undefined;
+  }
+
+  return {
+    state,
+    ...(summary ? { summary } : {}),
+    ...(plan ? { plan } : {}),
+    ...(lastTool ? { lastTool } : {})
+  };
 }
 
 export function workstreamMetadataAliasKey(alias: ScopeAlias): string {
@@ -182,6 +292,7 @@ function metadataFromRecord(value: Record<string, unknown>): WorkstreamMetadata 
   const status = safeStatus(value.status);
   const kind = safeKind(value.kind);
   const alias = safeAlias(value.cwd);
+  const activity = activityFromRecord(value);
   const createdAt = safeIsoTime(value.createdAt);
   const updatedAt = safeIsoTime(value.updatedAt);
 
@@ -196,6 +307,9 @@ function metadataFromRecord(value: Record<string, unknown>): WorkstreamMetadata 
   }
   if (alias) {
     metadata.safeRepoAlias = alias;
+  }
+  if (activity) {
+    metadata.activity = activity;
   }
   if (createdAt) {
     metadata.createdAt = createdAt;

@@ -34,6 +34,14 @@ export type SafeFact = {
 };
 
 export type RawState = "running" | "waiting" | "done_claimed" | "verified_done" | "unknown";
+export type WorkstreamActivityState = "running_tool" | "waiting_for_input" | "tool_error" | "idle" | "unknown";
+
+export type WorkstreamActivity = {
+  state: WorkstreamActivityState;
+  summary?: string;
+  plan?: string;
+  lastTool?: string;
+};
 
 export type WorkstreamState = {
   id: string;
@@ -86,6 +94,7 @@ export type AttentionRow = {
   workstreamId: string;
   label: string;
   scopeKind: ScopeKind;
+  activity?: WorkstreamActivity;
   displayHints?: WorkstreamDisplayHint[];
   scopeAlias?: ScopeAlias;
   parentScopeId?: string;
@@ -101,6 +110,7 @@ export type WorkstreamSummary = {
   workstreamId: string;
   label: string;
   scopeKind: ScopeKind;
+  activity?: WorkstreamActivity;
   displayHints?: WorkstreamDisplayHint[];
   scopeAlias?: ScopeAlias;
   parentScopeId?: string;
@@ -119,6 +129,7 @@ export type WorkstreamMetadata = {
   safeStatus?: RawState;
   safeKind?: ScopeKind;
   safeRepoAlias?: ScopeAlias;
+  activity?: WorkstreamActivity;
   createdAt?: string;
   updatedAt?: string;
 };

@@ -124,6 +124,7 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
       workstreamId: state.id,
       label: metadata?.safeTitle ?? scopeAlias?.label ?? state.label,
       scopeKind,
+      ...(metadata?.activity ? { activity: metadata.activity } : {}),
       ...(displayHints ? { displayHints } : {}),
       ...(scopeAlias ? { scopeAlias } : {}),
       lastActivityAt: state.lastActivityAt,
@@ -160,6 +161,7 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
       workstreamId: row.workstreamId,
       label: row.label,
       scopeKind: row.scopeKind,
+      ...(row.activity ? { activity: row.activity } : {}),
       ...(row.displayHints ? { displayHints: row.displayHints } : {}),
       ...(row.scopeAlias ? { scopeAlias: row.scopeAlias } : {}),
       ...(row.parentScopeId

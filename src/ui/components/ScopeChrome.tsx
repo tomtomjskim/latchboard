@@ -1,5 +1,15 @@
 import type { AttentionReason, ScopeAlias, WorkstreamSummary } from "../../shared/contracts";
-import { reasonLabel, reasonShortLabel, scopeAliasLabel, scopeDetailLabel, scopeKindLabel, signalLabel, stateLabels, formatDateTime } from "../format";
+import {
+  activityStateLabel,
+  formatDateTime,
+  reasonLabel,
+  reasonShortLabel,
+  scopeAliasLabel,
+  scopeDetailLabel,
+  scopeKindLabel,
+  signalLabel,
+  stateLabels
+} from "../format";
 
 export function ReasonChip({ reason }: { reason: AttentionReason | null }) {
   const label = reasonLabel(reason);
@@ -57,6 +67,9 @@ export function WorkstreamRowButton({
         <ScopeAliasBadge alias={workstream.scopeAlias} />
         <DisplayHintBadges workstream={workstream} />
         <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
+        {workstream.activity ? (
+          <span className="row-meta">{workstream.activity.summary ?? activityStateLabel(workstream.activity.state)}</span>
+        ) : null}
         {relationshipLabel ? <span className="parent-hint">{relationshipLabel}</span> : null}
         <ParentHint scope={workstream} />
       </span>
