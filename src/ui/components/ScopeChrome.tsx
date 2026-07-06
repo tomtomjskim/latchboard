@@ -2,6 +2,7 @@ import type { AttentionReason, ScopeAlias, WorkstreamSummary } from "../../share
 import {
   activityStateLabel,
   formatDateTime,
+  formatRelativeAge,
   reasonLabel,
   reasonShortLabel,
   scopeAliasLabel,
@@ -37,6 +38,15 @@ export function DisplayHintBadges({ workstream }: { workstream: WorkstreamSummar
   return <span className="display-hint">Needs label</span>;
 }
 
+function activitySummaryLabel(workstream: WorkstreamSummary): string | null {
+  if (!workstream.activity?.summary) {
+    return workstream.activity ? activityStateLabel(workstream.activity.state) : null;
+  }
+
+  const prefix = workstream.activity.state === "idle" ? "Idle" : "Current Work";
+  return `${prefix} ${workstream.activity.summary}`;
+}
+
 export function WorkstreamRowButton({
   workstream,
   isSelected,
@@ -53,6 +63,7 @@ export function WorkstreamRowButton({
   relationshipLabel?: string;
 }) {
   const classes = ["workstream-row", className, isSelected ? "is-selected" : ""].filter(Boolean).join(" ");
+  const activityLabel = activitySummaryLabel(workstream);
 
   return (
     <button
@@ -67,8 +78,11 @@ export function WorkstreamRowButton({
         <ScopeAliasBadge alias={workstream.scopeAlias} />
         <DisplayHintBadges workstream={workstream} />
         <span className="scope-pill">{scopeKindLabel(workstream.scopeKind)}</span>
-        {workstream.activity ? (
-          <span className="row-meta">{workstream.activity.summary ?? activityStateLabel(workstream.activity.state)}</span>
+        {activityLabel || workstream.activity?.lastTool ? (
+          <span className="row-signal-strip">
+            {activityLabel ? <span className="row-signal-pill current-work">{activityLabel}</span> : null}
+            {workstream.activity?.lastTool ? <span className="row-signal-pill">Tool {workstream.activity.lastTool}</span> : null}
+          </span>
         ) : null}
         {relationshipLabel ? <span className="parent-hint">{relationshipLabel}</span> : null}
         <ParentHint scope={workstream} />
@@ -76,7 +90,10 @@ export function WorkstreamRowButton({
       <span>{stateLabels[workstream.rawState]}</span>
       <span>{signalLabel(workstream.lastSignalCode)}</span>
       <span>{hasAttention ? reasonLabel(workstream.classification.attentionReason) : "Clear"}</span>
-      <span>{formatDateTime(workstream.lastActivityAt)}</span>
+      <span className="row-time">
+        <span>{formatRelativeAge(workstream.lastActivityAt)}</span>
+        <span>{formatDateTime(workstream.lastActivityAt)}</span>
+      </span>
     </button>
   );
 }

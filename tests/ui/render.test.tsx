@@ -483,6 +483,20 @@ describe("AppView", () => {
     expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
   });
 
+  it("surfaces row current work, last tool, and activity age for fast scanning", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-02T14:50:00.000+09:00"));
+    render(<AppView snapshot={filterableWorkstreamSnapshot} />);
+
+    const list = screen.getByRole("list", { name: "Workspace groups" });
+
+    expect(list.textContent).toContain("Current Work Editing dashboard activity panel");
+    expect(list.textContent).toContain("Tool Bash");
+    expect(list.textContent).toContain("19m ago");
+    expect(list.textContent).toContain("Idle Reviewing idle scope");
+    expect(list.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
+  });
+
   it("renders parent workspace hints for linked cmux session scopes", () => {
     render(<AppView snapshot={linkedScopeSnapshot} />);
 

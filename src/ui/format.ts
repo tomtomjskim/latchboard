@@ -76,6 +76,29 @@ export function formatDateTime(value: string): string {
   }).format(date);
 }
 
+export function formatRelativeAge(value: string, now = Date.now()): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "unknown";
+  }
+
+  const elapsedMs = Math.max(0, now - date.getTime());
+  const elapsedMinutes = Math.floor(elapsedMs / 60000);
+  if (elapsedMinutes < 1) {
+    return "just now";
+  }
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes}m ago`;
+  }
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) {
+    return `${elapsedHours}h ago`;
+  }
+
+  return `${Math.floor(elapsedHours / 24)}d ago`;
+}
+
 export function formatMode(mode: TodaySnapshot["mode"]): string {
   return mode === "demo" ? "Demo" : "Real";
 }

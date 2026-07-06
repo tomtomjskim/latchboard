@@ -633,6 +633,47 @@ button {
   -webkit-line-clamp: 2;
 }
 
+.row-signal-strip {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.row-signal-pill {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 22px;
+  align-items: center;
+  border: 1px solid var(--border-soft);
+  background: rgb(15 23 42 / 52%);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 2px 7px;
+}
+
+.row-signal-pill.current-work {
+  color: var(--fg-2);
+}
+
+.row-time {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+}
+
+.row-time span:first-child {
+  color: var(--fg-2);
+  font-weight: 900;
+}
+
+.row-time span:last-child {
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
 .reason-legend {
   margin: var(--space-1) 0 0;
   color: var(--muted);
