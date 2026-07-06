@@ -228,7 +228,13 @@ describe("buildSnapshot", () => {
             safeTitle: "Review missing validation queue",
             safeStatus: "waiting",
             safeKind: "workspace",
-            safeRepoAlias: { kind: "repo", label: "stock-auto" }
+            safeRepoAlias: { kind: "repo", label: "stock-auto" },
+            activity: {
+              state: "running_tool",
+              summary: "Editing dashboard activity panel",
+              plan: "Add active session inspector",
+              lastTool: "Bash"
+            }
           }
         ]
       ])
@@ -238,7 +244,13 @@ describe("buildSnapshot", () => {
       label: "Review missing validation queue",
       rawState: "waiting",
       scopeKind: "workspace",
-      scopeAlias: { kind: "repo", label: "stock-auto" }
+      scopeAlias: { kind: "repo", label: "stock-auto" },
+      activity: {
+        state: "running_tool",
+        summary: "Editing dashboard activity panel",
+        plan: "Add active session inspector",
+        lastTool: "Bash"
+      }
     });
     expect(snapshot.workstreams[0].displayHints).toBeUndefined();
     expect(JSON.stringify(snapshot)).not.toContain("/workspace/projects/stock-auto");

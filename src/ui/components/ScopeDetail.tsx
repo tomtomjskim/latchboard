@@ -2,7 +2,15 @@ import { useState } from "react";
 import type { TodaySnapshot, WorkstreamSummary } from "../../shared/contracts";
 import { evidenceLabel, nextStepPromptLabel } from "../../shared/contracts";
 import { registerSafeLabel } from "../api";
-import { formatDateTime, reasonLabel, scopeAliasLabel, scopeKindLabel, signalLabel, stateLabels } from "../format";
+import {
+  activityStateLabel,
+  formatDateTime,
+  reasonLabel,
+  scopeAliasLabel,
+  scopeKindLabel,
+  signalLabel,
+  stateLabels
+} from "../format";
 import { DisplayHintBadges, ReasonChip, ScopeAliasBadge } from "./ScopeChrome";
 import { SafeLabelModal } from "./SafeLabelModal";
 
@@ -101,6 +109,30 @@ export function ScopeDetail({
           <dt>State</dt>
           <dd>{stateLabels[workstream.rawState]}</dd>
         </div>
+        {workstream.activity ? (
+          <div>
+            <dt>Activity</dt>
+            <dd>{activityStateLabel(workstream.activity.state)}</dd>
+          </div>
+        ) : null}
+        {workstream.activity?.summary ? (
+          <div>
+            <dt>Current Work</dt>
+            <dd>{workstream.activity.summary}</dd>
+          </div>
+        ) : null}
+        {workstream.activity?.plan ? (
+          <div>
+            <dt>Plan</dt>
+            <dd>{workstream.activity.plan}</dd>
+          </div>
+        ) : null}
+        {workstream.activity?.lastTool ? (
+          <div>
+            <dt>Last Tool</dt>
+            <dd>{workstream.activity.lastTool}</dd>
+          </div>
+        ) : null}
         <div>
           <dt>Attention</dt>
           <dd>{reasonLabel(workstream.classification.attentionReason)}</dd>

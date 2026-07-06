@@ -79,7 +79,33 @@ describe("readWorkstreamMetadata", () => {
           status: "running",
           kind: "workspace",
           cwd: "/workspace/projects/latchboard",
+          context: {
+            toolSummary: "Editing dashboard activity panel",
+            planSummary: "Add active session inspector"
+          },
+          payload: {
+            toolUse: {
+              toolName: "Bash"
+            }
+          },
           updatedAt: "2026-07-03T03:30:00.000Z"
+        }),
+        JSON.stringify({
+          workstreamId: "ws_cmux_events_workspace_dddddddd44444444",
+          title: "Review validation queue",
+          status: "running",
+          kind: "workspace",
+          cwd: "/workspace/projects/ops-dashboard",
+          context: {
+            toolSummary: "cat /workspace/private/acme/env",
+            planSummary: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW"
+          },
+          payload: {
+            toolUse: {
+              toolName: "Bash && rm -rf /"
+            }
+          },
+          updatedAt: "2026-07-03T04:30:00.000Z"
         }),
         ""
       ].join("\n")
@@ -106,14 +132,39 @@ describe("readWorkstreamMetadata", () => {
       safeStatus: "running",
       safeKind: "workspace",
       safeRepoAlias: { kind: "repo", label: "latchboard" },
+      activity: {
+        state: "running_tool",
+        summary: "Editing dashboard activity panel",
+        plan: "Add active session inspector",
+        lastTool: "Bash"
+      },
       updatedAt: "2026-07-03T03:30:00.000Z"
     });
     expect(metadata.get(workstreamMetadataAliasKey({ kind: "repo", label: "latchboard" }))).toMatchObject({
       safeTitle: "Review validation queue",
-      safeRepoAlias: { kind: "repo", label: "latchboard" }
+      safeRepoAlias: { kind: "repo", label: "latchboard" },
+      activity: {
+        state: "running_tool",
+        summary: "Editing dashboard activity panel",
+        plan: "Add active session inspector",
+        lastTool: "Bash"
+      }
+    });
+    expect(metadata.get("ws_cmux_events_workspace_dddddddd44444444")).toMatchObject({
+      workstreamId: "ws_cmux_events_workspace_dddddddd44444444",
+      safeTitle: "Review validation queue",
+      safeStatus: "running",
+      safeKind: "workspace",
+      safeRepoAlias: { kind: "repo", label: "ops-dashboard" },
+      activity: {
+        state: "running_tool"
+      },
+      updatedAt: "2026-07-03T04:30:00.000Z"
     });
     expect(JSON.stringify([...metadata.values()])).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
     expect(JSON.stringify([...metadata.values()])).not.toContain("Fix customer Acme refund issue before launch");
+    expect(JSON.stringify([...metadata.values()])).not.toContain("cat /workspace/private/acme/env");
+    expect(JSON.stringify([...metadata.values()])).not.toContain("Bash && rm -rf /");
     expect(JSON.stringify([...metadata.values()])).not.toContain("/workspace/dev");
   });
 });

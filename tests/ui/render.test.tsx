@@ -118,7 +118,13 @@ const aliasedWorkspaceSnapshot: TodaySnapshot = {
   workstreams: [
     {
       ...activityOnlySnapshot.workstreams[0],
-      scopeAlias: { kind: "repo", label: "stock-auto" }
+      scopeAlias: { kind: "repo", label: "stock-auto" },
+      activity: {
+        state: "running_tool",
+        summary: "Editing dashboard activity panel",
+        plan: "Add active session inspector",
+        lastTool: "Bash"
+      }
     }
   ]
 };
@@ -390,6 +396,18 @@ describe("AppView", () => {
     expect(screen.getByRole("button", { name: "View workspace aaaaaa details" })).toBeTruthy();
     expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
     expect(document.body.textContent).not.toContain("/workspace/projects/stock-auto");
+  });
+
+  it("renders active session inspector details from sanitized metadata", () => {
+    render(<AppView snapshot={aliasedWorkspaceSnapshot} />);
+
+    expect(screen.getAllByText("Editing dashboard activity panel").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Running tool").length).toBeGreaterThan(0);
+    expect(screen.getByText("Add active session inspector")).toBeTruthy();
+    expect(screen.getByText("Bash")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("toolInputJSON");
+    expect(document.body.textContent).not.toContain("/workspace/projects/stock-auto");
+    expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
   });
 
   it("renders parent workspace hints for linked cmux session scopes", () => {

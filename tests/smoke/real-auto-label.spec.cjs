@@ -75,6 +75,7 @@ test("real mode auto-labels workstreams from sanitized metadata title", async ({
   const workstreamPath = join(dir, "workstream.jsonl");
   const statePath = join(dir, "state.json");
   const rawWorkspaceId = "opaque-workspace-auto-label";
+  const occurredAt = new Date().toISOString();
   let server;
 
   writeFileSync(
@@ -82,7 +83,7 @@ test("real mode auto-labels workstreams from sanitized metadata title", async ({
     `${JSON.stringify({
       type: "event",
       name: "workspace.selected",
-      occurred_at: "2026-07-03T08:00:00.000Z",
+      occurred_at: occurredAt,
       payload: {
         workspace_id: rawWorkspaceId
       }
@@ -96,7 +97,7 @@ test("real mode auto-labels workstreams from sanitized metadata title", async ({
       status: "running",
       kind: "workspace",
       cwd: "/workspace/projects/latchboard",
-      updatedAt: "2026-07-03T08:01:00.000Z"
+      updatedAt: occurredAt
     })}\n`
   );
 

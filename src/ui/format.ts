@@ -1,4 +1,12 @@
-import type { AttentionReason, RawState, SafeFactCode, ScopeAlias, ScopeKind, TodaySnapshot } from "../shared/contracts";
+import type {
+  AttentionReason,
+  RawState,
+  SafeFactCode,
+  ScopeAlias,
+  ScopeKind,
+  TodaySnapshot,
+  WorkstreamActivityState
+} from "../shared/contracts";
 
 export type RefreshStatus = "bootstrapping" | "ready" | "refreshing" | "retrying" | "disconnected";
 
@@ -22,6 +30,14 @@ export const stateLabels: Record<RawState, string> = {
   done_claimed: "done claimed",
   verified_done: "verified done",
   unknown: "unknown"
+};
+
+const activityStateLabels: Record<WorkstreamActivityState, string> = {
+  running_tool: "Running tool",
+  waiting_for_input: "Waiting",
+  tool_error: "Tool error",
+  idle: "Idle",
+  unknown: "Unknown"
 };
 
 const scopeKindLabels: Record<ScopeKind, string> = {
@@ -115,6 +131,10 @@ export function reasonShortLabel(reason: AttentionReason | null): string {
 
 export function signalLabel(code: SafeFactCode): string {
   return signalLabels[code];
+}
+
+export function activityStateLabel(state: WorkstreamActivityState): string {
+  return activityStateLabels[state];
 }
 
 export function scopeKindLabel(kind: ScopeKind): string {
