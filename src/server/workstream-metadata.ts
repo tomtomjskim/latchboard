@@ -217,6 +217,16 @@ function safeStatus(value: unknown): RawState | undefined {
   return allowedStatuses.has(value as RawState) ? (value as RawState) : undefined;
 }
 
+function safeStatusFromRecord(value: Record<string, unknown>): RawState | undefined {
+  const directStatus = safeStatus(value.status);
+  if (directStatus) {
+    return directStatus;
+  }
+
+  const status = recordField(value, "status");
+  return booleanField(status, "pending") === true ? "waiting" : undefined;
+}
+
 function safeKind(value: unknown): ScopeKind | undefined {
   return allowedKinds.has(value as ScopeKind) ? (value as ScopeKind) : undefined;
 }
@@ -289,7 +299,7 @@ function metadataFromRecord(value: Record<string, unknown>): WorkstreamMetadata 
   };
   const explicitSafeTitle = Object.hasOwn(value, "safeTitle");
   const title = sanitizeWorkstreamTitle(explicitSafeTitle ? value.safeTitle : value.title);
-  const status = safeStatus(value.status);
+  const status = safeStatusFromRecord(value);
   const kind = safeKind(value.kind);
   const alias = safeAlias(value.cwd);
   const activity = activityFromRecord(value);
