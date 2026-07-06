@@ -571,6 +571,45 @@ describe("AppView", () => {
     expect(unlabeledIndex).toBeGreaterThan(stockIndex);
   });
 
+  it("searches workspace groups by safe repo and activity text", () => {
+    render(<AppView snapshot={filterableWorkstreamSnapshot} />);
+
+    const search = screen.getByLabelText("Search workspace groups");
+    const list = screen.getByRole("list", { name: "Workspace groups" });
+
+    fireEvent.change(search, { target: { value: "idle scope" } });
+    expect(screen.getByText("1 of 3 observed")).toBeTruthy();
+    expect(list.textContent).not.toContain("Review stock automation");
+    expect(list.textContent).toContain("Review dashboard polish");
+    expect(list.textContent).not.toContain("workspace cccccc");
+
+    fireEvent.change(search, { target: { value: "stock-auto" } });
+    expect(screen.getByText("1 of 3 observed")).toBeTruthy();
+    expect(list.textContent).toContain("Review stock automation");
+    expect(list.textContent).not.toContain("Review dashboard polish");
+    expect(list.textContent).not.toContain("workspace cccccc");
+  });
+
+  it("filters workspace groups by safe repo alias quick buttons", () => {
+    render(<AppView snapshot={filterableWorkstreamSnapshot} />);
+
+    const list = screen.getByRole("list", { name: "Workspace groups" });
+
+    fireEvent.click(screen.getByRole("button", { name: "latchboard 1" }));
+    expect(screen.getByText("1 of 3 observed")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Active 0" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Idle 1" })).toBeTruthy();
+    expect(list.textContent).not.toContain("Review stock automation");
+    expect(list.textContent).toContain("Review dashboard polish");
+    expect(list.textContent).not.toContain("workspace cccccc");
+
+    fireEvent.click(screen.getByRole("button", { name: "All repos 3" }));
+    expect(screen.getByText("3 observed")).toBeTruthy();
+    expect(list.textContent).toContain("Review stock automation");
+    expect(list.textContent).toContain("Review dashboard polish");
+    expect(list.textContent).toContain("workspace cccccc");
+  });
+
   it("opens a sanitized detail panel for a selected workstream", () => {
     render(<AppView snapshot={snapshot} />);
 
