@@ -6,6 +6,7 @@ import { WorkstreamRowButton } from "./ScopeChrome";
 
 type WorkstreamFilter = "all" | "active" | "idle" | "needs_label";
 type WorkstreamSort = "activity" | "recent" | "repo";
+type RepoFilterOption = { label: string; value: string | null; count: number };
 
 const activeActivityStates = new Set(["running_tool", "waiting_for_input", "tool_error"]);
 const activeRawStates = new Set(["running", "waiting"]);
@@ -33,6 +34,31 @@ function filterWorkstream(workstream: WorkstreamSummary, filter: WorkstreamFilte
     return needsSafeLabel(workstream);
   }
   return true;
+}
+
+function searchableFields(workstream: WorkstreamSummary): string[] {
+  return [
+    workstream.label,
+    workstream.scopeAlias?.label,
+    workstream.parentLabel,
+    workstream.parentScopeAlias?.label,
+    workstream.activity?.summary,
+    workstream.activity?.plan,
+    workstream.activity?.lastTool
+  ].filter((field): field is string => Boolean(field));
+}
+
+function matchesSearch(workstream: WorkstreamSummary, query: string): boolean {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return searchableFields(workstream).some((field) => field.toLowerCase().includes(normalizedQuery));
+}
+
+function repoMatches(workstream: WorkstreamSummary, selectedRepo: string | null): boolean {
+  return selectedRepo ? workstream.scopeAlias?.label === selectedRepo : true;
 }
 
 function activityRank(workstream: WorkstreamSummary): number {
@@ -73,6 +99,23 @@ function filterCount(workstreams: WorkstreamSummary[], filter: WorkstreamFilter)
   return workstreams.filter((workstream) => filterWorkstream(workstream, filter)).length;
 }
 
+function repoFilterOptions(workstreams: WorkstreamSummary[]): RepoFilterOption[] {
+  const repoCounts = new Map<string, number>();
+  workstreams.forEach((workstream) => {
+    if (!workstream.scopeAlias) {
+      return;
+    }
+    repoCounts.set(workstream.scopeAlias.label, (repoCounts.get(workstream.scopeAlias.label) ?? 0) + 1);
+  });
+
+  return [
+    { label: "All repos", value: null, count: workstreams.length },
+    ...[...repoCounts.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([label, count]) => ({ label, value: label, count }))
+  ];
+}
+
 export function WorkspaceMap({
   snapshot,
   selected,
@@ -85,10 +128,21 @@ export function WorkspaceMap({
   onSelect: (workstreamId: string | null) => void;
 }) {
   const [filter, setFilter] = useState<WorkstreamFilter>("all");
+  const [query, setQuery] = useState("");
+  const [repoFilter, setRepoFilter] = useState<string | null>(null);
   const [sort, setSort] = useState<WorkstreamSort>("activity");
+  const searchMatchedWorkstreams = useMemo(
+    () => snapshot.workstreams.filter((workstream) => matchesSearch(workstream, query)),
+    [query, snapshot.workstreams]
+  );
+  const repoOptions = useMemo(() => repoFilterOptions(searchMatchedWorkstreams), [searchMatchedWorkstreams]);
+  const repoMatchedWorkstreams = useMemo(
+    () => searchMatchedWorkstreams.filter((workstream) => repoMatches(workstream, repoFilter)),
+    [repoFilter, searchMatchedWorkstreams]
+  );
   const filteredWorkstreams = useMemo(
-    () => sortWorkstreams(snapshot.workstreams.filter((workstream) => filterWorkstream(workstream, filter)), sort),
-    [filter, snapshot.workstreams, sort]
+    () => sortWorkstreams(repoMatchedWorkstreams.filter((workstream) => filterWorkstream(workstream, filter)), sort),
+    [filter, repoMatchedWorkstreams, sort]
   );
   const groupedScopes = useMemo(() => workspaceGroupsFor(filteredWorkstreams), [filteredWorkstreams]);
   const observedLabel =
@@ -96,11 +150,17 @@ export function WorkspaceMap({
       ? `${snapshot.workstreams.length} observed`
       : `${filteredWorkstreams.length} of ${snapshot.workstreams.length} observed`;
   const filterButtons: Array<{ id: WorkstreamFilter; label: string; count: number }> = [
-    { id: "all", label: "All", count: snapshot.workstreams.length },
-    { id: "active", label: "Active", count: filterCount(snapshot.workstreams, "active") },
-    { id: "idle", label: "Idle", count: filterCount(snapshot.workstreams, "idle") },
-    { id: "needs_label", label: "Needs label", count: filterCount(snapshot.workstreams, "needs_label") }
+    { id: "all", label: "All", count: repoMatchedWorkstreams.length },
+    { id: "active", label: "Active", count: filterCount(repoMatchedWorkstreams, "active") },
+    { id: "idle", label: "Idle", count: filterCount(repoMatchedWorkstreams, "idle") },
+    { id: "needs_label", label: "Needs label", count: filterCount(repoMatchedWorkstreams, "needs_label") }
   ];
+
+  useEffect(() => {
+    if (repoFilter && !repoOptions.some((option) => option.value === repoFilter)) {
+      setRepoFilter(null);
+    }
+  }, [repoFilter, repoOptions]);
 
   useEffect(() => {
     const selectedId = selected?.workstreamId ?? null;
@@ -121,19 +181,53 @@ export function WorkspaceMap({
         <h2 id="workstreams-heading">Workspace Groups</h2>
         <span>{observedLabel}</span>
       </div>
+      <div className="workspace-search-row">
+        <label className="workspace-search">
+          <span>Search</span>
+          <input
+            aria-label="Search workspace groups"
+            type="search"
+            value={query}
+            placeholder="Label, repo, activity"
+            onChange={(event) => setQuery(event.currentTarget.value)}
+          />
+        </label>
+        {query ? (
+          <button className="filter-tab" type="button" onClick={() => setQuery("")}>
+            Clear search
+          </button>
+        ) : null}
+      </div>
       <div className="workspace-controls">
-        <div className="filter-tabs" aria-label="Workspace filters">
-          {filterButtons.map((item) => (
-            <button
-              key={item.id}
-              className={`filter-tab ${filter === item.id ? "is-active" : ""}`}
-              type="button"
-              aria-pressed={filter === item.id}
-              onClick={() => setFilter(item.id)}
-            >
-              {item.label} {item.count}
-            </button>
-          ))}
+        <div className="workspace-filter-stack">
+          <div className="filter-tabs" aria-label="Workspace filters">
+            {filterButtons.map((item) => (
+              <button
+                key={item.id}
+                className={`filter-tab ${filter === item.id ? "is-active" : ""}`}
+                type="button"
+                aria-pressed={filter === item.id}
+                onClick={() => setFilter(item.id)}
+              >
+                {item.label} {item.count}
+              </button>
+            ))}
+          </div>
+          {repoOptions.length > 1 ? (
+            <div className="repo-tabs" aria-label="Repo filters">
+              {repoOptions.map((item) => (
+                <button
+                  key={item.value ?? "all"}
+                  className={`repo-filter-tab ${repoFilter === item.value ? "is-active" : ""}`}
+                  type="button"
+                  aria-pressed={repoFilter === item.value}
+                  onClick={() => setRepoFilter(item.value)}
+                >
+                  {item.label} {item.count}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
         <label className="sort-control">
           <span>Sort</span>
