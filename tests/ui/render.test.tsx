@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TodaySnapshot } from "../../src/shared/contracts";
@@ -639,6 +639,19 @@ describe("AppView", () => {
     expect(screen.getAllByText("Next Step").length).toBeGreaterThan(0);
     expect(screen.getAllByText("validation").length).toBeGreaterThan(0);
     expect(screen.getAllByText("No next-step prompt is required.").length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toContain("ws_attention");
+  });
+
+  it("renders a compact evidence trail with reason, code, and next-step prompt", () => {
+    render(<AppView snapshot={snapshot} />);
+    const detail = within(screen.getByLabelText("Scope detail"));
+
+    expect(detail.getByRole("heading", { name: "Workstream 1" })).toBeTruthy();
+    expect(detail.getByText("Evidence Trail")).toBeTruthy();
+    expect(detail.getByText("Reason Missing validation")).toBeTruthy();
+    expect(detail.getByText("Code completion_claim_without_validation")).toBeTruthy();
+    expect(detail.getByText("Completion was claimed without a validation signal.")).toBeTruthy();
+    expect(detail.getByText("Prompt Run the planned validation and review the result.")).toBeTruthy();
     expect(document.body.textContent).not.toContain("ws_attention");
   });
 });
