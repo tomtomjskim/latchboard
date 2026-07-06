@@ -295,6 +295,104 @@ describe("buildSnapshot", () => {
     expect(JSON.stringify(snapshot)).not.toContain("ws_cmux_events_workspace_unmatched");
   });
 
+  it("adds safe metadata-only activity workstreams when events have not observed them today", () => {
+    const snapshot = buildSnapshot({
+      mode: "real",
+      date: "2026-07-02",
+      timezone: "Asia/Seoul",
+      generatedAt: "2026-07-02T05:10:00.000Z",
+      sourceStatus,
+      workstreams: [],
+      classifications: [],
+      workstreamMetadata: new Map([
+        [
+          "ws_cmux_events_workspace_cccccccc33333333",
+          {
+            workstreamId: "ws_cmux_events_workspace_cccccccc33333333",
+            safeTitle: "Review validation queue",
+            safeStatus: "waiting",
+            safeKind: "workspace",
+            safeRepoAlias: { kind: "repo", label: "latchboard" },
+            activity: {
+              state: "running_tool",
+              summary: "Editing dashboard activity panel",
+              lastTool: "Bash"
+            },
+            updatedAt: "2026-07-02T05:05:00.000Z"
+          }
+        ]
+      ])
+    });
+
+    expect(snapshot.workstreams).toHaveLength(1);
+    expect(snapshot.attention).toHaveLength(0);
+    expect(snapshot.workstreams[0]).toMatchObject({
+      workstreamId: "ws_cmux_events_workspace_cccccccc33333333",
+      label: "Review validation queue",
+      scopeKind: "workspace",
+      scopeAlias: { kind: "repo", label: "latchboard" },
+      rawState: "waiting",
+      lastActivityAt: "2026-07-02T05:05:00.000Z",
+      lastSignalCode: "activity_seen",
+      activity: {
+        state: "running_tool",
+        summary: "Editing dashboard activity panel",
+        lastTool: "Bash"
+      },
+      classification: {
+        attentionReason: null,
+        certainty: "weak",
+        nextStepPromptTemplateId: "no_prompt"
+      }
+    });
+  });
+
+  it("does not duplicate metadata-only rows when metadata is already used through a repo alias", () => {
+    const workspaceFact: SafeFact = {
+      id: "fact_workspace",
+      sourceType: "cmux_events",
+      occurredAt: "2026-07-02T05:00:00.000Z",
+      workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      code: "activity_seen",
+      sourceEventType: "system",
+      scopeAlias: { kind: "repo", label: "latchboard" }
+    };
+
+    const snapshot = buildSnapshot({
+      mode: "real",
+      date: "2026-07-02",
+      timezone: "Asia/Seoul",
+      generatedAt: "2026-07-02T05:10:00.000Z",
+      sourceStatus,
+      workstreams: [workstream("ws_cmux_events_workspace_aaaaaaaa11111111", "running", [workspaceFact])],
+      classifications: [classification("ws_cmux_events_workspace_aaaaaaaa11111111", null)],
+      workstreamMetadata: new Map([
+        [
+          workstreamMetadataAliasKey({ kind: "repo", label: "latchboard" }),
+          {
+            workstreamId: "ws_cmux_events_workspace_unmatched",
+            safeTitle: "Review validation queue",
+            safeRepoAlias: { kind: "repo", label: "latchboard" },
+            activity: {
+              state: "running_tool",
+              lastTool: "Bash"
+            }
+          }
+        ]
+      ])
+    });
+
+    expect(snapshot.workstreams).toHaveLength(1);
+    expect(snapshot.workstreams[0]).toMatchObject({
+      label: "Review validation queue",
+      activity: {
+        state: "running_tool",
+        lastTool: "Bash"
+      }
+    });
+    expect(JSON.stringify(snapshot)).not.toContain("ws_cmux_events_workspace_unmatched");
+  });
+
   it("marks unlabeled cmux workspace summaries as needing a safe label", () => {
     const workspaceFact: SafeFact = {
       id: "fact_workspace",

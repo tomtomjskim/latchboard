@@ -59,8 +59,12 @@ function scopeKindFor(state: WorkstreamState): ScopeKind {
     return "workstream";
   }
 
-  const match = /^ws_cmux_events_(workspace|session|surface|pane|window)_/.exec(state.id);
-  return match ? (match[1] as ScopeKind) : "workstream";
+  return scopeKindForWorkstreamId(state.id) ?? "workstream";
+}
+
+function scopeKindForWorkstreamId(workstreamId: string): ScopeKind | undefined {
+  const match = /^ws_cmux_events_(workspace|session|surface|pane|window)_/.exec(workstreamId);
+  return match ? (match[1] as ScopeKind) : undefined;
 }
 
 function relatedWorkspaceIdFor(state: WorkstreamState, summaries: Map<string, WorkstreamSummary>): string | undefined {
@@ -103,9 +107,83 @@ function displayHintsFor(
   return undefined;
 }
 
+function metadataOnlyLabel(workstreamId: string, scopeKind: ScopeKind): string {
+  const match = /^ws_cmux_events_(workspace|session|surface|pane|window|workstream)_([a-f0-9]{16})$/.exec(
+    workstreamId
+  );
+  return match ? `${scopeKind} ${match[2].slice(0, 6)}` : `${scopeKind} metadata`;
+}
+
+function metadataOnlyRawState(metadata: WorkstreamMetadata): WorkstreamState["rawState"] {
+  if (metadata.safeStatus) {
+    return metadata.safeStatus;
+  }
+
+  if (metadata.activity?.state === "waiting_for_input") {
+    return "waiting";
+  }
+  if (metadata.activity?.state === "running_tool" || metadata.activity?.state === "tool_error") {
+    return "running";
+  }
+
+  return "unknown";
+}
+
+function metadataOnlyClassification(workstreamId: string, since: string): Classification {
+  return {
+    workstreamId,
+    attentionReason: null,
+    severity: "low",
+    certainty: "weak",
+    evidenceCodes: [],
+    nextStepStatus: "unclear",
+    nextStepPromptTemplateId: "no_prompt",
+    since
+  };
+}
+
+function metadataOnlyLastActivityAt(input: BuildSnapshotInput, metadata: WorkstreamMetadata): string {
+  return metadata.updatedAt ?? metadata.createdAt ?? `${input.date}T00:00:00.000Z`;
+}
+
+function uniqueWorkstreamMetadata(metadataById: Map<string, WorkstreamMetadata>): WorkstreamMetadata[] {
+  const byWorkstreamId = new Map<string, WorkstreamMetadata>();
+  for (const metadata of metadataById.values()) {
+    byWorkstreamId.set(metadata.workstreamId, metadata);
+  }
+
+  return [...byWorkstreamId.values()];
+}
+
+function metadataOnlySummary(input: BuildSnapshotInput, metadata: WorkstreamMetadata): WorkstreamSummary | undefined {
+  if (!metadata.activity) {
+    return undefined;
+  }
+
+  const scopeAlias = metadata.safeRepoAlias;
+  const scopeKind = metadata.safeKind ?? scopeKindForWorkstreamId(metadata.workstreamId) ?? "workstream";
+  const lastActivityAt = metadataOnlyLastActivityAt(input, metadata);
+  const displayHints =
+    scopeKind === "workspace" && !metadata.safeTitle && !scopeAlias ? (["needs_safe_label"] as const) : undefined;
+
+  return {
+    workstreamId: metadata.workstreamId,
+    label: metadata.safeTitle ?? scopeAlias?.label ?? metadataOnlyLabel(metadata.workstreamId, scopeKind),
+    scopeKind,
+    activity: metadata.activity,
+    ...(displayHints ? { displayHints: [...displayHints] } : {}),
+    ...(scopeAlias ? { scopeAlias } : {}),
+    lastActivityAt,
+    rawState: metadataOnlyRawState(metadata),
+    lastSignalCode: "activity_seen",
+    classification: metadataOnlyClassification(metadata.workstreamId, lastActivityAt)
+  };
+}
+
 export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
   const classificationsById = new Map(input.classifications.map((item) => [item.workstreamId, item]));
   const metadataById = input.workstreamMetadata ?? new Map<string, WorkstreamMetadata>();
+  const usedMetadataWorkstreamIds = new Set<string>();
 
   const workstreams: WorkstreamSummary[] = input.workstreams.map((state) => {
     const classification = classificationsById.get(state.id);
@@ -116,6 +194,9 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
     const metadata =
       metadataById.get(state.id) ??
       (stateScopeAlias ? metadataById.get(workstreamMetadataAliasKey(stateScopeAlias)) : undefined);
+    if (metadata) {
+      usedMetadataWorkstreamIds.add(metadata.workstreamId);
+    }
     const scopeAlias = metadata?.safeRepoAlias ?? stateScopeAlias;
     const scopeKind = metadata?.safeKind ?? scopeKindFor(state);
     const displayHints = displayHintsFor(state, metadata, scopeKind, scopeAlias);
@@ -133,6 +214,17 @@ export function buildSnapshot(input: BuildSnapshotInput): TodaySnapshot {
       classification
     };
   });
+  const observedWorkstreamIds = new Set(workstreams.map((workstream) => workstream.workstreamId));
+  const metadataOnlyWorkstreams = uniqueWorkstreamMetadata(metadataById)
+    .filter((metadata) => !observedWorkstreamIds.has(metadata.workstreamId))
+    .filter((metadata) => !usedMetadataWorkstreamIds.has(metadata.workstreamId))
+    .map((metadata) => metadataOnlySummary(input, metadata))
+    .filter((workstream): workstream is WorkstreamSummary => Boolean(workstream))
+    .sort((left, right) => {
+      const timeDelta = Date.parse(right.lastActivityAt) - Date.parse(left.lastActivityAt);
+      return timeDelta === 0 ? left.label.localeCompare(right.label) : timeDelta;
+    });
+  workstreams.push(...metadataOnlyWorkstreams);
   const workstreamsById = new Map(workstreams.map((workstream) => [workstream.workstreamId, workstream]));
 
   input.workstreams.forEach((state) => {
