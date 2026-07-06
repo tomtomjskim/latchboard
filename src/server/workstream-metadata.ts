@@ -321,6 +321,10 @@ function metadataFromRecord(value: Record<string, unknown>): WorkstreamMetadata 
   return metadata;
 }
 
+function mergeMetadata(previous: WorkstreamMetadata | undefined, next: WorkstreamMetadata): WorkstreamMetadata {
+  return previous ? { ...previous, ...next } : next;
+}
+
 export function readWorkstreamMetadata(path: string | undefined): Map<string, WorkstreamMetadata> {
   const metadata = new Map<string, WorkstreamMetadata>();
   if (!path || !existsSync(path)) {
@@ -342,9 +346,15 @@ export function readWorkstreamMetadata(path: string | undefined): Map<string, Wo
 
       const entry = metadataFromRecord(value);
       if (entry) {
-        metadata.set(entry.workstreamId, entry);
-        if (entry.safeRepoAlias) {
-          metadata.set(workstreamMetadataAliasKey(entry.safeRepoAlias), entry);
+        const previous = metadata.get(entry.workstreamId);
+        const merged = mergeMetadata(previous, entry);
+        if (previous?.safeRepoAlias) {
+          metadata.delete(workstreamMetadataAliasKey(previous.safeRepoAlias));
+        }
+
+        metadata.set(merged.workstreamId, merged);
+        if (merged.safeRepoAlias) {
+          metadata.set(workstreamMetadataAliasKey(merged.safeRepoAlias), merged);
         }
       }
     } catch {
