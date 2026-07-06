@@ -46,17 +46,5 @@ export function workspaceGroupsFor(workstreams: WorkstreamSummary[]): GroupedSco
 }
 
 export function selectedFromSnapshot(snapshot: TodaySnapshot, selectedId: string | null): WorkstreamSummary | null {
-  if (selectedId) {
-    const selected = snapshot.workstreams.find((workstream) => workstream.workstreamId === selectedId);
-    if (selected) {
-      return selected;
-    }
-  }
-
-  const firstAttention = snapshot.attention[0];
-  if (!firstAttention) {
-    return snapshot.workstreams[0] ?? null;
-  }
-
-  return snapshot.workstreams.find((workstream) => workstream.workstreamId === firstAttention.workstreamId) ?? null;
+  return selectedId ? (snapshot.workstreams.find((workstream) => workstream.workstreamId === selectedId) ?? null) : null;
 }

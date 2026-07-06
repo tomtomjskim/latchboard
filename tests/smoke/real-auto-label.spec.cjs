@@ -109,7 +109,7 @@ test("real mode auto-labels workstreams from sanitized metadata title", async ({
     await expect(page.getByText("Real")).toBeVisible();
     await expect(page.getByText("Review validation queue").first()).toBeVisible();
     await expect(page.getByText("repo latchboard").first()).toBeVisible();
-    await expect(page.getByText("Needs label")).toHaveCount(0);
+    await expect(page.locator(".display-hint")).toHaveCount(0);
     await expect(page.getByText("Safe label missing")).toHaveCount(0);
 
     const visibleText = await page.locator("body").innerText();

@@ -221,6 +221,79 @@ const groupedScopeSnapshot: TodaySnapshot = {
   ]
 };
 
+const filterableWorkstreamSnapshot: TodaySnapshot = {
+  ...activityOnlySnapshot,
+  workstreams: [
+    {
+      workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+      label: "Review stock automation",
+      scopeKind: "workspace",
+      scopeAlias: { kind: "repo", label: "stock-auto" },
+      lastActivityAt: "2026-07-02T14:31:00.000+09:00",
+      rawState: "running",
+      lastSignalCode: "activity_seen",
+      activity: {
+        state: "running_tool",
+        summary: "Editing dashboard activity panel",
+        lastTool: "Bash"
+      },
+      classification: {
+        workstreamId: "ws_cmux_events_workspace_aaaaaaaa11111111",
+        attentionReason: null,
+        severity: "low",
+        certainty: "explicit",
+        evidenceCodes: [],
+        nextStepStatus: "unclear",
+        nextStepPromptTemplateId: "no_prompt",
+        since: "2026-07-02T14:31:00.000+09:00"
+      }
+    },
+    {
+      workstreamId: "ws_cmux_events_workspace_bbbbbbbb22222222",
+      label: "Review dashboard polish",
+      scopeKind: "workspace",
+      scopeAlias: { kind: "repo", label: "latchboard" },
+      lastActivityAt: "2026-07-02T14:20:00.000+09:00",
+      rawState: "unknown",
+      lastSignalCode: "activity_seen",
+      activity: {
+        state: "idle",
+        summary: "Reviewing idle scope",
+        lastTool: "Read"
+      },
+      classification: {
+        workstreamId: "ws_cmux_events_workspace_bbbbbbbb22222222",
+        attentionReason: null,
+        severity: "low",
+        certainty: "weak",
+        evidenceCodes: [],
+        nextStepStatus: "unclear",
+        nextStepPromptTemplateId: "no_prompt",
+        since: "2026-07-02T14:20:00.000+09:00"
+      }
+    },
+    {
+      workstreamId: "ws_cmux_events_workspace_cccccccc33333333",
+      label: "workspace cccccc",
+      scopeKind: "workspace",
+      displayHints: ["needs_safe_label"],
+      lastActivityAt: "2026-07-02T14:10:00.000+09:00",
+      rawState: "running",
+      lastSignalCode: "activity_seen",
+      classification: {
+        workstreamId: "ws_cmux_events_workspace_cccccccc33333333",
+        attentionReason: null,
+        severity: "low",
+        certainty: "weak",
+        evidenceCodes: [],
+        nextStepStatus: "unclear",
+        nextStepPromptTemplateId: "no_prompt",
+        since: "2026-07-02T14:10:00.000+09:00"
+      }
+    }
+  ]
+};
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -430,6 +503,72 @@ describe("AppView", () => {
     expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
     expect(document.body.textContent).not.toContain("ws_cmux_events_session_bbbbbbbb22222222");
     expect(document.body.textContent).not.toContain("ws_cmux_events_pane_cccccccc33333333");
+  });
+
+  it("filters workspace groups by active, idle, and label needs", () => {
+    render(<AppView snapshot={filterableWorkstreamSnapshot} />);
+
+    expect(screen.getByText("3 observed")).toBeTruthy();
+    const list = screen.getByRole("list", { name: "Workspace groups" });
+    expect(list.textContent).toContain("Review stock automation");
+    expect(list.textContent).toContain("Review dashboard polish");
+    expect(list.textContent).toContain("workspace cccccc");
+
+    fireEvent.click(screen.getByRole("button", { name: "Active 2" }));
+    expect(screen.getByText("2 of 3 observed")).toBeTruthy();
+    expect(list.textContent).toContain("Review stock automation");
+    expect(list.textContent).not.toContain("Review dashboard polish");
+    expect(list.textContent).toContain("workspace cccccc");
+
+    fireEvent.click(screen.getByRole("button", { name: "Idle 1" }));
+    expect(list.textContent).not.toContain("Review stock automation");
+    expect(list.textContent).toContain("Review dashboard polish");
+    expect(list.textContent).not.toContain("workspace cccccc");
+
+    fireEvent.click(screen.getByRole("button", { name: "Needs label 1" }));
+    expect(list.textContent).not.toContain("Review stock automation");
+    expect(list.textContent).not.toContain("Review dashboard polish");
+    expect(list.textContent).toContain("workspace cccccc");
+  });
+
+  it("counts raw running workstreams as active without activity metadata", async () => {
+    render(<AppView snapshot={activityOnlySnapshot} />);
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "workspace aaaaaa" })).toBeTruthy());
+    const list = screen.getByRole("list", { name: "Workspace groups" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Active 1" }));
+
+    expect(screen.getByText("1 observed")).toBeTruthy();
+    expect(list.textContent).toContain("workspace aaaaaa");
+    expect(screen.getByRole("heading", { name: "workspace aaaaaa" })).toBeTruthy();
+  });
+
+  it("clears the selected detail when a filter has no matching workspace groups", async () => {
+    render(<AppView snapshot={activityOnlySnapshot} />);
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "workspace aaaaaa" })).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Idle 0" }));
+
+    expect(screen.getByText("0 of 1 observed")).toBeTruthy();
+    expect(screen.getByText("No scopes match this view")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("No scope selected")).toBeTruthy());
+    expect(screen.queryByRole("heading", { name: "workspace aaaaaa" })).toBeNull();
+  });
+
+  it("sorts workspace groups by safe repo alias when requested", () => {
+    render(<AppView snapshot={filterableWorkstreamSnapshot} />);
+
+    const list = screen.getByRole("list", { name: "Workspace groups" });
+    fireEvent.change(screen.getByLabelText("Sort workspace groups"), { target: { value: "repo" } });
+
+    const latchboardIndex = list.textContent?.indexOf("Review dashboard polish") ?? -1;
+    const stockIndex = list.textContent?.indexOf("Review stock automation") ?? -1;
+    const unlabeledIndex = list.textContent?.indexOf("workspace cccccc") ?? -1;
+    expect(latchboardIndex).toBeGreaterThanOrEqual(0);
+    expect(stockIndex).toBeGreaterThan(latchboardIndex);
+    expect(unlabeledIndex).toBeGreaterThan(stockIndex);
   });
 
   it("opens a sanitized detail panel for a selected workstream", () => {

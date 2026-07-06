@@ -28,7 +28,7 @@ export function DashboardShell({
   snapshotPollMs: number;
   token?: string;
   onSnapshot?: (snapshot: TodaySnapshot) => void;
-  onSelect: (workstreamId: string) => void;
+  onSelect: (workstreamId: string | null) => void;
 }) {
   return (
     <main className="app">

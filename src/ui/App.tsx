@@ -25,7 +25,9 @@ export function AppView({
   token?: string;
   onSnapshot?: (snapshot: TodaySnapshot) => void;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(snapshot.attention[0]?.workstreamId ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    snapshot.attention[0]?.workstreamId ?? snapshot.workstreams[0]?.workstreamId ?? null
+  );
   const selected = useMemo(() => selectedFromSnapshot(snapshot, selectedId), [snapshot, selectedId]);
   const attentionIds = useMemo(() => new Set(snapshot.attention.map((row) => row.workstreamId)), [snapshot.attention]);
 
