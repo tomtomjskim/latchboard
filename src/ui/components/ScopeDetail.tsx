@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { TodaySnapshot, WorkstreamSummary } from "../../shared/contracts";
+import type { EvidenceCode, TodaySnapshot, WorkstreamSummary } from "../../shared/contracts";
 import { evidenceLabel, nextStepPromptLabel } from "../../shared/contracts";
 import { registerSafeLabel } from "../api";
 import {
@@ -149,9 +149,15 @@ export function ScopeDetail({
           <dt>Last Signal</dt>
           <dd>{signalLabel(workstream.lastSignalCode)}</dd>
         </div>
-        <div>
-          <dt>Evidence</dt>
-          <dd>{workstream.classification.evidenceCodes.map(evidenceLabel).join(" ")}</dd>
+        <div className="detail-evidence-row">
+          <dt>Evidence Trail</dt>
+          <dd>
+            <EvidenceTrail
+              attentionReason={workstream.classification.attentionReason}
+              evidenceCodes={workstream.classification.evidenceCodes}
+              nextStepPromptTemplateId={workstream.classification.nextStepPromptTemplateId}
+            />
+          </dd>
         </div>
         <div>
           <dt>Next Step</dt>
@@ -160,5 +166,35 @@ export function ScopeDetail({
       </dl>
       {isModalOpen ? <SafeLabelModal onClose={() => setIsModalOpen(false)} onSubmit={submitLabel} /> : null}
     </aside>
+  );
+}
+
+function EvidenceTrail({
+  attentionReason,
+  evidenceCodes,
+  nextStepPromptTemplateId
+}: {
+  attentionReason: WorkstreamSummary["classification"]["attentionReason"];
+  evidenceCodes: EvidenceCode[];
+  nextStepPromptTemplateId: WorkstreamSummary["classification"]["nextStepPromptTemplateId"];
+}) {
+  return (
+    <div className="evidence-trail">
+      <span className="evidence-trail-chip">{`Reason ${reasonLabel(attentionReason)}`}</span>
+      {evidenceCodes.length > 0 ? (
+        evidenceCodes.map((code) => (
+          <span className="evidence-trail-item" key={code}>
+            <span className="evidence-code">{`Code ${code}`}</span>
+            <span>{evidenceLabel(code)}</span>
+          </span>
+        ))
+      ) : (
+        <span className="evidence-trail-item">
+          <span className="evidence-code">Code none</span>
+          <span>No evidence issue is present.</span>
+        </span>
+      )}
+      <span className="evidence-trail-chip">{`Prompt ${nextStepPromptLabel(nextStepPromptTemplateId)}`}</span>
+    </div>
   );
 }
