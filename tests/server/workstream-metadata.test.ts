@@ -167,4 +167,62 @@ describe("readWorkstreamMetadata", () => {
     expect(JSON.stringify([...metadata.values()])).not.toContain("Bash && rm -rf /");
     expect(JSON.stringify([...metadata.values()])).not.toContain("/workspace/dev");
   });
+
+  it("merges sparse records without dropping prior safe activity metadata", () => {
+    const dir = mkdtempSync(join(tmpdir(), "latchboard-workstream-meta-"));
+    const path = join(dir, "workstream.jsonl");
+    writeFileSync(
+      path,
+      [
+        JSON.stringify({
+          workstreamId: "ws_cmux_events_workspace_eeeeeeee55555555",
+          title: "Review active inspector",
+          status: "running",
+          kind: "workspace",
+          cwd: "/workspace/projects/latchboard",
+          context: {
+            toolSummary: "Editing dashboard activity panel"
+          },
+          payload: {
+            toolUse: {
+              toolName: "Bash"
+            }
+          },
+          updatedAt: "2026-07-03T05:00:00.000Z"
+        }),
+        JSON.stringify({
+          workstreamId: "ws_cmux_events_workspace_eeeeeeee55555555",
+          title: "Review active inspector",
+          status: "waiting",
+          kind: "workspace",
+          cwd: "/workspace/projects/latchboard",
+          updatedAt: "2026-07-03T05:05:00.000Z"
+        }),
+        ""
+      ].join("\n")
+    );
+
+    const metadata = readWorkstreamMetadata(path);
+
+    expect(metadata.get("ws_cmux_events_workspace_eeeeeeee55555555")).toMatchObject({
+      workstreamId: "ws_cmux_events_workspace_eeeeeeee55555555",
+      safeTitle: "Review active inspector",
+      safeStatus: "waiting",
+      safeKind: "workspace",
+      safeRepoAlias: { kind: "repo", label: "latchboard" },
+      activity: {
+        state: "running_tool",
+        summary: "Editing dashboard activity panel",
+        lastTool: "Bash"
+      },
+      updatedAt: "2026-07-03T05:05:00.000Z"
+    });
+    expect(metadata.get(workstreamMetadataAliasKey({ kind: "repo", label: "latchboard" }))).toMatchObject({
+      activity: {
+        state: "running_tool",
+        summary: "Editing dashboard activity panel",
+        lastTool: "Bash"
+      }
+    });
+  });
 });
