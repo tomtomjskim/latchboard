@@ -225,4 +225,37 @@ describe("readWorkstreamMetadata", () => {
       }
     });
   });
+
+  it("maps pending status objects to a safe waiting state", () => {
+    const dir = mkdtempSync(join(tmpdir(), "latchboard-workstream-meta-"));
+    const path = join(dir, "workstream.jsonl");
+    writeFileSync(
+      path,
+      [
+        JSON.stringify({
+          workstreamId: "ws_cmux_events_workspace_ffffffff66666666",
+          title: "Review pending approval",
+          status: {
+            pending: true,
+            telemetry: {
+              raw: "LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW"
+            }
+          },
+          kind: "workspace",
+          cwd: "/workspace/projects/latchboard"
+        }),
+        ""
+      ].join("\n")
+    );
+
+    const metadata = readWorkstreamMetadata(path);
+
+    expect(metadata.get("ws_cmux_events_workspace_ffffffff66666666")).toMatchObject({
+      safeStatus: "waiting",
+      activity: {
+        state: "waiting_for_input"
+      }
+    });
+    expect(JSON.stringify([...metadata.values()])).not.toContain("LATCHBOARD_SECRET_CANARY_DO_NOT_SHOW");
+  });
 });
