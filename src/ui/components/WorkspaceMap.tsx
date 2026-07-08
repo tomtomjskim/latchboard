@@ -8,6 +8,7 @@ type WorkstreamFilter = "all" | "active" | "idle" | "needs_label";
 type WorkstreamSort = "activity" | "recent" | "repo";
 type RepoFilterOption = { label: string; value: string | null; count: number };
 type QuickView = { id: WorkstreamFilter; label: string; count: number };
+const activeNowWindowMs = 24 * 60 * 60 * 1000;
 
 const filterSummaryLabels: Record<WorkstreamFilter, string> = {
   all: "All scopes",
@@ -129,6 +130,15 @@ function activeNowFocusLabel(workstream: WorkstreamSummary): string {
   return `Focus active ${label}`;
 }
 
+function isRecentActivity(workstream: WorkstreamSummary, generatedAt: string): boolean {
+  const snapshotTime = Date.parse(generatedAt);
+  const activityTime = Date.parse(workstream.lastActivityAt);
+  if (Number.isNaN(snapshotTime) || Number.isNaN(activityTime)) {
+    return true;
+  }
+  return snapshotTime - activityTime <= activeNowWindowMs;
+}
+
 function repoFilterOptions(workstreams: WorkstreamSummary[]): RepoFilterOption[] {
   const repoCounts = new Map<string, number>();
   workstreams.forEach((workstream) => {
@@ -175,8 +185,14 @@ export function WorkspaceMap({
     [filter, repoMatchedWorkstreams, sort]
   );
   const activeNow = useMemo(
-    () => sortWorkstreams(snapshot.workstreams.filter(isActiveWorkstream), "recent").slice(0, 6),
-    [snapshot.workstreams]
+    () =>
+      sortWorkstreams(
+        snapshot.workstreams.filter(
+          (workstream) => isActiveWorkstream(workstream) && isRecentActivity(workstream, snapshot.generatedAt)
+        ),
+        "recent"
+      ).slice(0, 6),
+    [snapshot.generatedAt, snapshot.workstreams]
   );
   const groupedScopes = useMemo(() => workspaceGroupsFor(filteredWorkstreams), [filteredWorkstreams]);
   const observedLabel =

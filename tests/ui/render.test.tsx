@@ -294,6 +294,32 @@ const filterableWorkstreamSnapshot: TodaySnapshot = {
   ]
 };
 
+const staleRunningWorkstreamSnapshot: TodaySnapshot = {
+  ...filterableWorkstreamSnapshot,
+  generatedAt: "2026-07-02T14:40:00.000+09:00",
+  workstreams: [
+    ...filterableWorkstreamSnapshot.workstreams,
+    {
+      workstreamId: "ws_cmux_events_workspace_dddddddd44444444",
+      label: "Stale running import",
+      scopeKind: "workspace",
+      lastActivityAt: "2026-06-30T14:30:00.000+09:00",
+      rawState: "running",
+      lastSignalCode: "activity_seen",
+      classification: {
+        workstreamId: "ws_cmux_events_workspace_dddddddd44444444",
+        attentionReason: null,
+        severity: "low",
+        certainty: "weak",
+        evidenceCodes: [],
+        nextStepStatus: "unclear",
+        nextStepPromptTemplateId: "no_prompt",
+        since: "2026-06-30T14:30:00.000+09:00"
+      }
+    }
+  ]
+};
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -518,6 +544,18 @@ describe("AppView", () => {
     expect(screen.getByRole("button", { name: "All 3" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("heading", { name: "workspace cccccc" })).toBeTruthy();
     expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_cccccccc33333333");
+  });
+
+  it("keeps stale running scopes out of the active now strip", () => {
+    render(<AppView snapshot={staleRunningWorkstreamSnapshot} />);
+
+    const activeNow = screen.getByLabelText("Active now");
+    const list = screen.getByRole("list", { name: "Workspace groups" });
+
+    expect(activeNow.textContent).toContain("Active now 2");
+    expect(activeNow.textContent).not.toContain("Stale running import");
+    expect(list.textContent).toContain("Stale running import");
+    expect(screen.getByRole("button", { name: "Active 3" })).toBeTruthy();
   });
 
   it("renders parent workspace hints for linked cmux session scopes", () => {
