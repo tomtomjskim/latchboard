@@ -239,6 +239,13 @@ export function WorkspaceMap({
     onSelect(workstreamId);
   }
 
+  function showActiveWorkOnly() {
+    setQuery("");
+    setRepoFilter(null);
+    setFilter("active");
+    setSort("activity");
+  }
+
   useEffect(() => {
     if (repoFilter && !repoOptions.some((option) => option.value === repoFilter)) {
       setRepoFilter(null);
@@ -269,6 +276,9 @@ export function WorkspaceMap({
           <div className="active-now-heading">
             <span>Active now {activeNow.length}</span>
             <span>{activeNow.length === 1 ? "scope" : "scopes"}</span>
+            <button className="active-now-action" type="button" onClick={showActiveWorkOnly}>
+              Show active work only
+            </button>
           </div>
           <div className="active-now-items">
             {activeNow.map((workstream) => (

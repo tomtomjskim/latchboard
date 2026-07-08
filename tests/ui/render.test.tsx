@@ -458,7 +458,7 @@ describe("AppView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save label" }));
 
     await waitFor(() => expect(screen.getByRole("dialog", { name: "Safe label" })).toBeTruthy());
-    expect(screen.getByText("Label registration failed")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("Label registration failed")).toBeTruthy());
   });
 
   it("closes the safe label modal with Escape without writing", () => {
@@ -556,6 +556,31 @@ describe("AppView", () => {
     expect(activeNow.textContent).not.toContain("Stale running import");
     expect(list.textContent).toContain("Stale running import");
     expect(screen.getByRole("button", { name: "Active 3" })).toBeTruthy();
+  });
+
+  it("uses active now to switch into the active-only workspace view", () => {
+    render(<AppView snapshot={filterableWorkstreamSnapshot} />);
+
+    const activeNow = screen.getByLabelText("Active now");
+    const search = screen.getByLabelText("Search workspace groups");
+    const sort = screen.getByLabelText("Sort workspace groups") as HTMLSelectElement;
+    const list = screen.getByRole("list", { name: "Workspace groups" });
+
+    fireEvent.change(search, { target: { value: "polish" } });
+    fireEvent.change(sort, { target: { value: "repo" } });
+    fireEvent.click(screen.getByRole("button", { name: "latchboard 1" }));
+    expect(screen.getByText("1 of 3 observed")).toBeTruthy();
+
+    fireEvent.click(within(activeNow).getByRole("button", { name: "Show active work only" }));
+
+    expect((search as HTMLInputElement).value).toBe("");
+    expect(sort.value).toBe("activity");
+    expect(screen.getByRole("button", { name: "All repos 3" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Active 2" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByLabelText("Workspace view summary").textContent).toContain("View Active work");
+    expect(list.textContent).toContain("Review stock automation");
+    expect(list.textContent).toContain("workspace cccccc");
+    expect(list.textContent).not.toContain("Review dashboard polish");
   });
 
   it("renders parent workspace hints for linked cmux session scopes", () => {
