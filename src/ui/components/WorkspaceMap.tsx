@@ -9,6 +9,17 @@ type WorkstreamSort = "activity" | "recent" | "repo";
 type RepoFilterOption = { label: string; value: string | null; count: number };
 type QuickView = { id: WorkstreamFilter; label: string; count: number };
 
+const filterSummaryLabels: Record<WorkstreamFilter, string> = {
+  all: "All scopes",
+  active: "Active work",
+  idle: "Idle scopes",
+  needs_label: "Needs labels"
+};
+const sortSummaryLabels: Record<WorkstreamSort, string> = {
+  activity: "Activity first",
+  recent: "Recent first",
+  repo: "Repo"
+};
 const activeActivityStates = new Set(["running_tool", "waiting_for_input", "tool_error"]);
 const activeRawStates = new Set(["running", "waiting"]);
 
@@ -161,12 +172,25 @@ export function WorkspaceMap({
     { id: "active", label: "Active work", count: filterCount(snapshot.workstreams, "active") },
     { id: "needs_label", label: "Needs labels", count: filterCount(snapshot.workstreams, "needs_label") }
   ];
+  const trimmedQuery = query.trim();
+  const isDefaultView = filter === "all" && !trimmedQuery && repoFilter === null && sort === "activity";
+  const viewSummaryParts = [
+    `View ${filterSummaryLabels[filter]}`,
+    observedLabel,
+    sortSummaryLabels[sort],
+    repoFilter ? `Repo ${repoFilter}` : "All Repos",
+    trimmedQuery ? `Search ${trimmedQuery}` : null
+  ].filter((part): part is string => Boolean(part));
 
   function applyQuickView(nextFilter: WorkstreamFilter) {
     setQuery("");
     setRepoFilter(null);
     setFilter(nextFilter);
     setSort("activity");
+  }
+
+  function resetView() {
+    applyQuickView("all");
   }
 
   useEffect(() => {
@@ -270,6 +294,14 @@ export function WorkspaceMap({
             <option value="repo">Repo</option>
           </select>
         </label>
+      </div>
+      <div className="view-summary" aria-label="Workspace view summary">
+        <span>{viewSummaryParts.join(" · ")}</span>
+        {!isDefaultView ? (
+          <button className="filter-tab" type="button" onClick={resetView}>
+            Reset view
+          </button>
+        ) : null}
       </div>
       <div className="workstream-list">
         <div className="workstream-row workstream-head" aria-hidden="true">

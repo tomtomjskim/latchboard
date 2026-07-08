@@ -657,6 +657,46 @@ describe("AppView", () => {
     expect(list.textContent).toContain("workspace cccccc");
   });
 
+  it("summarizes the current workspace view and resets every view control", () => {
+    render(<AppView snapshot={filterableWorkstreamSnapshot} />);
+
+    const viewSummary = screen.getByLabelText("Workspace view summary");
+    const search = screen.getByLabelText("Search workspace groups");
+    const sort = screen.getByLabelText("Sort workspace groups") as HTMLSelectElement;
+    const list = screen.getByRole("list", { name: "Workspace groups" });
+
+    expect(viewSummary.textContent).toContain("View All scopes");
+    expect(viewSummary.textContent).toContain("3 observed");
+    expect(viewSummary.textContent).toContain("Activity first");
+    expect(viewSummary.textContent).toContain("All Repos");
+    expect(screen.queryByRole("button", { name: "Reset view" })).toBeNull();
+
+    fireEvent.change(search, { target: { value: "stock-auto" } });
+    fireEvent.change(sort, { target: { value: "repo" } });
+    fireEvent.click(screen.getByRole("button", { name: "stock-auto 1" }));
+
+    expect(viewSummary.textContent).toContain("View All scopes");
+    expect(viewSummary.textContent).toContain("1 of 3 observed");
+    expect(viewSummary.textContent).toContain("Repo");
+    expect(viewSummary.textContent).toContain("Repo stock-auto");
+    expect(viewSummary.textContent).toContain("Search stock-auto");
+    expect(list.textContent).toContain("Review stock automation");
+    expect(list.textContent).not.toContain("workspace cccccc");
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset view" }));
+
+    expect((search as HTMLInputElement).value).toBe("");
+    expect(sort.value).toBe("activity");
+    expect(screen.getByRole("button", { name: "All 3" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "All repos 3" }).getAttribute("aria-pressed")).toBe("true");
+    expect(viewSummary.textContent).toContain("View All scopes");
+    expect(viewSummary.textContent).toContain("3 observed");
+    expect(viewSummary.textContent).toContain("Activity first");
+    expect(viewSummary.textContent).toContain("All Repos");
+    expect(viewSummary.textContent).not.toContain("Search stock-auto");
+    expect(screen.queryByRole("button", { name: "Reset view" })).toBeNull();
+  });
+
   it("opens a sanitized detail panel for a selected workstream", () => {
     render(<AppView snapshot={snapshot} />);
 
