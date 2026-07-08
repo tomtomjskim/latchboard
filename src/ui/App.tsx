@@ -2,7 +2,7 @@ import "./styles.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TodaySnapshot } from "../shared/contracts";
 import { fetchSnapshot, readBootstrapSnapshot, readBootstrapToken } from "./api";
-import { DashboardShell } from "./components/DashboardShell";
+import { DashboardShell, type SnapshotUpdatePulse } from "./components/DashboardShell";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import type { RefreshStatus } from "./format";
 import { selectedFromSnapshot } from "./view-model";
@@ -12,16 +12,40 @@ const snapshotPollMs = 2000;
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; snapshot: TodaySnapshot; refreshStatus: RefreshStatus };
+  | { status: "ready"; snapshot: TodaySnapshot; refreshStatus: RefreshStatus; liveUpdate?: SnapshotUpdatePulse };
+
+function snapshotUpdatePulse(previous: TodaySnapshot | null, next: TodaySnapshot): SnapshotUpdatePulse | undefined {
+  if (!previous) {
+    return undefined;
+  }
+
+  const parsedDelta = next.sourceStatus.parsedLineCount - previous.sourceStatus.parsedLineCount;
+  const observedDelta = next.workstreams.length - previous.workstreams.length;
+  const pulseKey = [
+    next.generatedAt,
+    next.sourceStatus.parsedLineCount,
+    next.workstreams.length,
+    next.attention.length
+  ].join(":");
+  const changed =
+    parsedDelta !== 0 ||
+    observedDelta !== 0 ||
+    next.attention.length !== previous.attention.length ||
+    next.generatedAt !== previous.generatedAt;
+
+  return changed ? { parsedDelta, observedDelta, changed, pulseKey } : undefined;
+}
 
 export function AppView({
   snapshot,
   refreshStatus = "ready",
+  liveUpdate,
   token,
   onSnapshot
 }: {
   snapshot: TodaySnapshot;
   refreshStatus?: RefreshStatus;
+  liveUpdate?: SnapshotUpdatePulse;
   token?: string;
   onSnapshot?: (snapshot: TodaySnapshot) => void;
 }) {
@@ -38,6 +62,7 @@ export function AppView({
       attentionIds={attentionIds}
       refreshStatus={refreshStatus}
       snapshotPollMs={snapshotPollMs}
+      liveUpdate={liveUpdate}
       token={token}
       onSnapshot={onSnapshot}
       onSelect={setSelectedId}
@@ -81,10 +106,14 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
         const snapshot = await fetchSnapshot(token);
         if (!cancelled) {
           hasReadySnapshot.current = true;
-          setState({
-            status: "ready",
-            snapshot,
-            refreshStatus: snapshot.sourceStatus.connected ? "ready" : "disconnected"
+          setState((current) => {
+            const previousSnapshot = current.status === "ready" ? current.snapshot : null;
+            return {
+              status: "ready",
+              snapshot,
+              refreshStatus: snapshot.sourceStatus.connected ? "ready" : "disconnected",
+              liveUpdate: snapshotUpdatePulse(previousSnapshot, snapshot)
+            };
           });
         }
       } catch {
@@ -123,8 +152,19 @@ export function App({ pollMs = snapshotPollMs }: { pollMs?: number } = {}) {
     <AppView
       snapshot={state.snapshot}
       refreshStatus={state.refreshStatus}
+      liveUpdate={state.liveUpdate}
       token={token ?? undefined}
-      onSnapshot={(snapshot) => setState({ status: "ready", snapshot, refreshStatus: "ready" })}
+      onSnapshot={(snapshot) =>
+        setState((current) => {
+          const previousSnapshot = current.status === "ready" ? current.snapshot : null;
+          return {
+            status: "ready",
+            snapshot,
+            refreshStatus: "ready",
+            liveUpdate: snapshotUpdatePulse(previousSnapshot, snapshot)
+          };
+        })
+      }
     />
   );
 }
