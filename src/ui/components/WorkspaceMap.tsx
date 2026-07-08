@@ -7,6 +7,7 @@ import { WorkstreamRowButton } from "./ScopeChrome";
 type WorkstreamFilter = "all" | "active" | "idle" | "needs_label";
 type WorkstreamSort = "activity" | "recent" | "repo";
 type RepoFilterOption = { label: string; value: string | null; count: number };
+type QuickView = { id: WorkstreamFilter; label: string; count: number };
 
 const activeActivityStates = new Set(["running_tool", "waiting_for_input", "tool_error"]);
 const activeRawStates = new Set(["running", "waiting"]);
@@ -155,6 +156,18 @@ export function WorkspaceMap({
     { id: "idle", label: "Idle", count: filterCount(repoMatchedWorkstreams, "idle") },
     { id: "needs_label", label: "Needs label", count: filterCount(repoMatchedWorkstreams, "needs_label") }
   ];
+  const quickViews: QuickView[] = [
+    { id: "all", label: "All scopes", count: snapshot.workstreams.length },
+    { id: "active", label: "Active work", count: filterCount(snapshot.workstreams, "active") },
+    { id: "needs_label", label: "Needs labels", count: filterCount(snapshot.workstreams, "needs_label") }
+  ];
+
+  function applyQuickView(nextFilter: WorkstreamFilter) {
+    setQuery("");
+    setRepoFilter(null);
+    setFilter(nextFilter);
+    setSort("activity");
+  }
 
   useEffect(() => {
     if (repoFilter && !repoOptions.some((option) => option.value === repoFilter)) {
@@ -197,6 +210,22 @@ export function WorkspaceMap({
             Clear search
           </button>
         ) : null}
+      </div>
+      <div className="quick-view-tabs" role="group" aria-label="Saved quick views">
+        {quickViews.map((item) => {
+          const isActiveQuickView = !query.trim() && repoFilter === null && sort === "activity" && filter === item.id;
+          return (
+            <button
+              key={item.id}
+              className={`quick-view-tab ${isActiveQuickView ? "is-active" : ""}`}
+              type="button"
+              aria-pressed={isActiveQuickView}
+              onClick={() => applyQuickView(item.id)}
+            >
+              {item.label} {item.count}
+            </button>
+          );
+        })}
       </div>
       <div className="workspace-controls">
         <div className="workspace-filter-stack">
