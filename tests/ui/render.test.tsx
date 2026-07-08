@@ -802,18 +802,37 @@ describe("App", () => {
       },
       generatedAt: "2026-07-02T14:31:00.000+09:00"
     };
+    const nextSnapshot: TodaySnapshot = {
+      ...refreshedSnapshot,
+      sourceStatus: {
+        ...refreshedSnapshot.sourceStatus,
+        parsedLineCount: 15
+      },
+      generatedAt: "2026-07-02T14:32:00.000+09:00"
+    };
     const fetch = vi
       .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(activityOnlySnapshot), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSnapshot), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify(refreshedSnapshot), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(nextSnapshot), { status: 200 }));
     vi.stubGlobal("fetch", fetch);
 
     render(<App pollMs={1000} />);
 
     await waitFor(() => expect(screen.getByText("12")).toBeTruthy());
+    const initialPulse = screen.getByRole("status", { name: "Last snapshot update: Watching" });
+    expect(initialPulse.textContent).toContain("Watching");
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2), { timeout: 2000 });
     expect(screen.getByText("13")).toBeTruthy();
+    const firstPulse = screen.getByRole("status", { name: "Last snapshot update: Lines +1" });
+    expect(firstPulse.textContent).toContain("Lines +1");
+    const firstPulseKey = firstPulse.getAttribute("data-pulse-key");
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3), { timeout: 2500 });
+    expect(screen.getByText("15")).toBeTruthy();
+    const secondPulse = screen.getByRole("status", { name: "Last snapshot update: Lines +2" });
+    expect(secondPulse.getAttribute("data-pulse-key")).not.toBe(firstPulseKey);
   });
 
   it("renders an error state when no bootstrap token is available", async () => {
