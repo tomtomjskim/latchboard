@@ -497,6 +497,29 @@ describe("AppView", () => {
     expect(list.textContent).not.toContain("ws_cmux_events_workspace_aaaaaaaa11111111");
   });
 
+  it("surfaces active work as a focused now strip", () => {
+    render(<AppView snapshot={filterableWorkstreamSnapshot} />);
+
+    const activeNow = screen.getByLabelText("Active now");
+    const search = screen.getByLabelText("Search workspace groups");
+    expect(activeNow.textContent).toContain("Active now 2");
+    expect(activeNow.textContent).toContain("Review stock automation");
+    expect(activeNow.textContent).toContain("Editing dashboard activity panel");
+    expect(activeNow.textContent).toContain("workspace cccccc");
+    expect(activeNow.textContent).not.toContain("Review dashboard polish");
+
+    fireEvent.change(search, { target: { value: "dashboard polish" } });
+    expect(screen.getByText("1 of 3 observed")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Review dashboard polish" })).toBeTruthy();
+
+    fireEvent.click(within(activeNow).getByRole("button", { name: "Focus active workspace cccccc" }));
+
+    expect((search as HTMLInputElement).value).toBe("");
+    expect(screen.getByRole("button", { name: "All 3" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("heading", { name: "workspace cccccc" })).toBeTruthy();
+    expect(document.body.textContent).not.toContain("ws_cmux_events_workspace_cccccccc33333333");
+  });
+
   it("renders parent workspace hints for linked cmux session scopes", () => {
     render(<AppView snapshot={linkedScopeSnapshot} />);
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { TodaySnapshot, WorkstreamSummary } from "../../shared/contracts";
-import { observedEmptyLabel } from "../format";
+import { activityStateLabel, observedEmptyLabel } from "../format";
 import { childScopeCountLabel, workspaceGroupsFor } from "../view-model";
-import { WorkstreamRowButton } from "./ScopeChrome";
+import { ScopeAliasBadge, WorkstreamRowButton } from "./ScopeChrome";
 
 type WorkstreamFilter = "all" | "active" | "idle" | "needs_label";
 type WorkstreamSort = "activity" | "recent" | "repo";
@@ -111,6 +111,24 @@ function filterCount(workstreams: WorkstreamSummary[], filter: WorkstreamFilter)
   return workstreams.filter((workstream) => filterWorkstream(workstream, filter)).length;
 }
 
+function activeNowSummary(workstream: WorkstreamSummary): string {
+  if (workstream.activity?.summary) {
+    return workstream.activity.summary;
+  }
+  if (workstream.activity) {
+    return activityStateLabel(workstream.activity.state);
+  }
+  return workstream.rawState === "waiting" ? "Waiting" : "Running";
+}
+
+function activeNowFocusLabel(workstream: WorkstreamSummary): string {
+  const kindPrefix = `${workstream.scopeKind} `;
+  const label = workstream.label.toLowerCase().startsWith(kindPrefix)
+    ? workstream.label
+    : `${workstream.scopeKind} ${workstream.label}`;
+  return `Focus active ${label}`;
+}
+
 function repoFilterOptions(workstreams: WorkstreamSummary[]): RepoFilterOption[] {
   const repoCounts = new Map<string, number>();
   workstreams.forEach((workstream) => {
@@ -156,6 +174,10 @@ export function WorkspaceMap({
     () => sortWorkstreams(repoMatchedWorkstreams.filter((workstream) => filterWorkstream(workstream, filter)), sort),
     [filter, repoMatchedWorkstreams, sort]
   );
+  const activeNow = useMemo(
+    () => sortWorkstreams(snapshot.workstreams.filter(isActiveWorkstream), "recent").slice(0, 6),
+    [snapshot.workstreams]
+  );
   const groupedScopes = useMemo(() => workspaceGroupsFor(filteredWorkstreams), [filteredWorkstreams]);
   const observedLabel =
     filteredWorkstreams.length === snapshot.workstreams.length
@@ -193,6 +215,14 @@ export function WorkspaceMap({
     applyQuickView("all");
   }
 
+  function focusActiveWorkstream(workstreamId: string) {
+    setQuery("");
+    setRepoFilter(null);
+    setFilter("all");
+    setSort("activity");
+    onSelect(workstreamId);
+  }
+
   useEffect(() => {
     if (repoFilter && !repoOptions.some((option) => option.value === repoFilter)) {
       setRepoFilter(null);
@@ -218,6 +248,33 @@ export function WorkspaceMap({
         <h2 id="workstreams-heading">Workspace Groups</h2>
         <span>{observedLabel}</span>
       </div>
+      {activeNow.length > 0 ? (
+        <div className="active-now-strip" aria-label="Active now">
+          <div className="active-now-heading">
+            <span>Active now {activeNow.length}</span>
+            <span>{activeNow.length === 1 ? "scope" : "scopes"}</span>
+          </div>
+          <div className="active-now-items">
+            {activeNow.map((workstream) => (
+              <button
+                key={workstream.workstreamId}
+                className={`active-now-card ${selected?.workstreamId === workstream.workstreamId ? "is-selected" : ""}`}
+                type="button"
+                aria-pressed={selected?.workstreamId === workstream.workstreamId}
+                aria-label={activeNowFocusLabel(workstream)}
+                onClick={() => focusActiveWorkstream(workstream.workstreamId)}
+              >
+                <span className="active-now-title">{workstream.label}</span>
+                <ScopeAliasBadge alias={workstream.scopeAlias} />
+                <span className="active-now-meta">{activeNowSummary(workstream)}</span>
+                {workstream.activity?.lastTool ? (
+                  <span className="active-now-meta">Tool {workstream.activity.lastTool}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="workspace-search-row">
         <label className="workspace-search">
           <span>Search</span>
