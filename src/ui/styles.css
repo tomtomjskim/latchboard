@@ -343,6 +343,13 @@ button {
   gap: var(--space-1);
 }
 
+.quick-view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
 .workspace-filter-stack {
   display: grid;
   gap: var(--space-1);
@@ -356,6 +363,7 @@ button {
 
 .filter-tab,
 .repo-filter-tab,
+.quick-view-tab,
 .sort-control select {
   border: 1px solid var(--border);
   background: rgb(18 23 34 / 82%);
@@ -366,10 +374,15 @@ button {
 }
 
 .filter-tab,
-.repo-filter-tab {
+.repo-filter-tab,
+.quick-view-tab {
   min-height: 32px;
   padding: 0 var(--space-2);
   cursor: pointer;
+}
+
+.quick-view-tab {
+  color: var(--fg);
 }
 
 .repo-filter-tab {
@@ -378,13 +391,15 @@ button {
 }
 
 .filter-tab:hover,
-.repo-filter-tab:hover {
+.repo-filter-tab:hover,
+.quick-view-tab:hover {
   border-color: var(--accent);
   color: var(--fg);
 }
 
 .filter-tab:focus-visible,
 .repo-filter-tab:focus-visible,
+.quick-view-tab:focus-visible,
 .workspace-search input:focus-visible,
 .sort-control select:focus-visible {
   outline: 0;
@@ -392,7 +407,8 @@ button {
 }
 
 .filter-tab.is-active,
-.repo-filter-tab.is-active {
+.repo-filter-tab.is-active,
+.quick-view-tab.is-active {
   border-color: var(--accent);
   background: rgb(96 165 250 / 14%);
   color: var(--fg);

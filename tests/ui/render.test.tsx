@@ -624,6 +624,39 @@ describe("AppView", () => {
     expect(list.textContent).toContain("workspace cccccc");
   });
 
+  it("applies saved quick views after search and repo filters narrow the board", () => {
+    render(<AppView snapshot={filterableWorkstreamSnapshot} />);
+
+    const list = screen.getByRole("list", { name: "Workspace groups" });
+    const quickViews = within(screen.getByLabelText("Saved quick views"));
+    const search = screen.getByLabelText("Search workspace groups");
+    const sort = screen.getByLabelText("Sort workspace groups") as HTMLSelectElement;
+
+    fireEvent.change(search, { target: { value: "stock-auto" } });
+    fireEvent.change(sort, { target: { value: "repo" } });
+    fireEvent.click(screen.getByRole("button", { name: "stock-auto 1" }));
+    expect(screen.getByText("1 of 3 observed")).toBeTruthy();
+    expect(list.textContent).toContain("Review stock automation");
+    expect(list.textContent).not.toContain("workspace cccccc");
+
+    fireEvent.click(quickViews.getByRole("button", { name: "Needs labels 1" }));
+    expect((search as HTMLInputElement).value).toBe("");
+    expect(sort.value).toBe("activity");
+    expect(screen.getByRole("button", { name: "All repos 3" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Needs label 1" }).getAttribute("aria-pressed")).toBe("true");
+    expect(quickViews.getByRole("button", { name: "Needs labels 1" }).getAttribute("aria-pressed")).toBe("true");
+    expect(list.textContent).not.toContain("Review stock automation");
+    expect(list.textContent).not.toContain("Review dashboard polish");
+    expect(list.textContent).toContain("workspace cccccc");
+
+    fireEvent.click(quickViews.getByRole("button", { name: "Active work 2" }));
+    expect(screen.getByRole("button", { name: "Active 2" }).getAttribute("aria-pressed")).toBe("true");
+    expect(quickViews.getByRole("button", { name: "Active work 2" }).getAttribute("aria-pressed")).toBe("true");
+    expect(list.textContent).toContain("Review stock automation");
+    expect(list.textContent).not.toContain("Review dashboard polish");
+    expect(list.textContent).toContain("workspace cccccc");
+  });
+
   it("opens a sanitized detail panel for a selected workstream", () => {
     render(<AppView snapshot={snapshot} />);
 
